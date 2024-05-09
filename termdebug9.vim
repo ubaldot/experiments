@@ -345,8 +345,9 @@ def StartDebug_term(dict: dict<any>)
   # Adding arguments requested by the user
   gdb_cmd += gdb_args
 
-  ch_log('executing "' . join(gdb_cmd) . '"')
-  # TODO: open below-left to leave more space to the windows
+  ch_log('executing "' . join(gdb_cmd) .. '"')
+  # TODO: for the other windows create first a split and then wincmd L. Resize
+  # also a bit
   gdbbuf = term_start(gdb_cmd, {
 	\ 'term_name': 'gdb',
 	\ 'term_finish': 'close',
@@ -362,9 +363,11 @@ def StartDebug_term(dict: dict<any>)
   var counter = 0
   var counter_max = 300
   var success = false
-  while success == false || counter < counter_max
+  while success == false && counter < counter_max
     if CheckGdbRunning() != 'ok'
-      success = true
+      # Failure. If NOK just return.
+      # TODO: call CloseBuffers()?
+       return
     endif
 
     for lnum in range(1, 200)
@@ -384,6 +387,7 @@ def StartDebug_term(dict: dict<any>)
    return
   endif
 
+  # ---- gdb started. Next, let's set the MI interface. ---
   # Set arguments to be run.
   if len(proc_args)
     term_sendkeys(gdbbuf, 'server set args ' .. join(proc_args) . "\r")
@@ -395,9 +399,10 @@ def StartDebug_term(dict: dict<any>)
 
   # Wait for the response to show up, users may not notice the error and wonder
   # why the debugger doesn't work.
+  counter = 0
+  counter_max = 300
   success = false
-  # TODO: FIX in Vim9 while loop cannot be shortned!
-  while success == false
+  while success == false && counter < counter_max
     if CheckGdbRunning() != 'ok'
       return
     endif
@@ -427,20 +432,21 @@ def StartDebug_term(dict: dict<any>)
     if response =~ 'New UI allocated'
         break
     endif
-    try_count += 1
-    if try_count > 100
-      Echoerr('Cannot check if your gdb works, continuing anyway')
-      break
-    endif
+    counter += 1
     sleep 10m
   endwhile
+
+  if success == false
+    Echoerr('Cannot check if your gdb works, continuing anyway')
+    return
+  endif
 
   job_setoptions(term_getjob(gdbbuf), {'exit_cb': function('s:EndTermDebug')})
 
   # Set the filetype, this can be used to add mappings.
   set filetype=termdebug
 
-  StartDebugCommon(a:dict)
+  StartDebugCommon(dict)
 enddef
 
 # Open a window with a prompt buffer to run gdb in.
