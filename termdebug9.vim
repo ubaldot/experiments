@@ -76,8 +76,11 @@ var asmwin = 0
 var ptywin = 0
 var sourcewin = 0
 
+# Remember the old value of 'signcolumn' for each buffer that it's set in, so
+# that we can restore the value for all buffers.
 var signcolumn_buflist = [bufnr()]
 var save_columns = 0
+
 var allleft = 0
 # This was s:vertical but I cannot use vertical as variable name
 var vvertical = 0
@@ -161,11 +164,13 @@ def Echoerr(msg: string)
 enddef
 
 def StartDebug(bang: bool, ...gdb_args: list<string>)
+  # ENTRY POINT
   # First argument is the command to debug, second core file or process ID.
   StartDebug_internal({'gdb_args': gdb_args, 'bang': bang})
 enddef
 
 def StartDebugCommand(bang: bool, ...args: list<string>) # TODO: check!
+  # ALTERNATIVE ENTRY POINT
   # First argument is the command to debug, rest are run arguments.
   StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[1:], 'bang': bang})
 enddef
@@ -189,13 +194,8 @@ def StartDebug_internal(dict: dict<any>)
    # Uncomment this line to write logging in "debuglog".
    # call ch_logfile('debuglog', 'w')
 
+  # Assume current window is the source code window
   sourcewin = win_getid()
-
-  # Remember the old value of 'signcolumn' for each buffer that it's set in, so
-  # that we can restore the value for all buffers.
-  var b:save_signcolumn = &signcolumn
-  var signcolumn_buflist = [bufnr()]
-
   save_columns = 0
   allleft = 0
   wide = 0
@@ -238,7 +238,7 @@ def StartDebug_internal(dict: dict<any>)
      StartDebug_term(dict)
   endif
 
-  # Add eventual other windows here
+  # TODO Add eventual other windows here
   if GetDisasmWindow()
     var curwinid = win_getid()
     GotoAsmwinOrCreateIt()
@@ -448,7 +448,7 @@ def StartDebug_term(dict: dict<any>)
 
   StartDebugCommon(dict)
 enddef
-
+#
 # Open a window with a prompt buffer to run gdb in.
 def StartDebug_prompt(dict: dict<any>)
   if vertical
