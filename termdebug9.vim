@@ -346,6 +346,7 @@ def StartDebug_term(dict: dict<any>)
   gdb_cmd += gdb_args
 
   ch_log('executing "' . join(gdb_cmd) . '"')
+  # TODO: open below-left to leave more space to the windows
   gdbbuf = term_start(gdb_cmd, {
 	\ 'term_finish': 'close',
 	\ })
@@ -354,32 +355,37 @@ def StartDebug_term(dict: dict<any>)
     CloseBuffers()
    return
   endif
-  var gdbwin = win_getid()
+  gdbwin = win_getid()
 
  # Wait for the "startupdone" message before sending any commands.
-  var try_count = 0
-  while 1
-   if CheckGdbRunning() != 'ok'
-     return
-   endif
+  var counter = 0
+  var counter_max = 300
+  var success = false
+  while success == false || counter < counter_max
+    if CheckGdbRunning() != 'ok'
+      return
+    endif
 
-  for lnum in range(1, 200)
-      if term_getline(s:gdbbuf, lnum) =~ 'startupdone'
-  var try_count = 9999
-        break
+    for lnum in range(1, 200)
+      if term_getline(gdbbuf, lnum) =~ 'startupdone'
+        success = true
       endif
     endfor
-  var try_count += 1
-    if try_count > 300
-      # done or give up after five seconds
-      break
-    endif
+
+    counter += 1
+    # Each counter is 10ms
     sleep 10m
   endwhile
 
+  if success == false
+    Echoerr('Failed to startup the gdb program.')
+    CloseBuffers()
+   return
+  endif
+
   # Set arguments to be run.
   if len(proc_args)
-    call term_sendkeys(gdbbuf, 'server set args ' . join(proc_args) . "\r")
+    term_sendkeys(gdbbuf, 'server set args ' .. join(proc_args) . "\r")
   endif
 
   # Connect gdb to the communication pty, using the GDB/MI interface.
@@ -388,38 +394,39 @@ def StartDebug_term(dict: dict<any>)
 
   # Wait for the response to show up, users may not notice the error and wonder
   # why the debugger doesn't work.
-  var try_count = 0
+  try_count = 0
+  # TODO: FIX in Vim9 while loop cannot be shortned!
   while 1
     if CheckGdbRunning() != 'ok'
       return
-  endif
+    endif
 
- var response = ''
+    var response = ''
     for lnum in range(1, 200)
- var line1 = term_getline(s:gdbbuf, lnum)
- var line2 = term_getline(s:gdbbuf, lnum + 1)
+      var line1 = term_getline(gdbbuf, lnum)
+      var line2 = term_getline(gdbbuf, lnum + 1)
       if line1 =~ 'new-ui mi '
-        # response can be in the same line or the next line
- var response = line1 . line2
+      # response can be in the same line or the next line
+        response = line1 .. line2
         if response =~ 'Undefined command'
           Echoerr('Sorry, your gdb is too old, gdb 7.12 is required')
-          " CHECKME: possibly send a "server show version" here
+          # CHECKME: possibly send a "server show version" here
           CloseBuffers()
           return
         endif
         if response =~ 'New UI allocated'
-          " Success!
+          # Success!
           break
         endif
       elseif line1 =~ 'Reading symbols from' && line2 !~ 'new-ui mi '
-        # Reading symbols might take a while, try more times
- var try_count -= 1
+            # Reading symbols might take a while, try more times
+            try_count -= 1
       endif
     endfor
     if response =~ 'New UI allocated'
-      break
+        break
     endif
- var try_count += 1
+    try_count += 1
     if try_count > 100
       Echoerr('Cannot check if your gdb works, continuing anyway')
       break
