@@ -43,24 +43,54 @@ vim9script
 #   finish
 # endif
 
+# Former s: variables shall be declared outside
+
+var way = 'terminal'
+var err = 'no errors'
+
+var pc_id = 12
+var asm_id = 13
+var break_id = 14  # breakpoint number is added to this
+var stopped = 1
+var running = 0
+
+var parsing_disasm_msg = 0
+var asm_lines = []
+var asm_addr = ''
+
+# These shall be constants but cannot be initialized here
+# They indicate the buffer numbers of the main buffers used
+var gbdbuf = -1
+var varbuf = -1
+var asmbuf = -1
+
+# These changes because they relate to windows
+# TODO they may be lists because windows are generally returned as lists
+var pid = 0
+var gbdwim = []
+var varwin = 0
+var asmwin = 0
+var ptywin = 0
+
 # Need either the +terminal feature or +channel and the prompt buffer.
 # The terminal feature does not work with gdb on win32.
 if has('terminal') && !has('win32')
- var way = 'terminal'
+ way = 'terminal'
 elseif has('channel') && exists('*prompt_setprompt')
- var way = 'prompt'
+ way = 'prompt'
 else
   if has('terminal')
- var err = 'Cannot debug, missing prompt buffer support'
+ err = 'Cannot debug, missing prompt buffer support'
   else
- var err = 'Cannot debug, +channel feature is not supported'
+ err = 'Cannot debug, +channel feature is not supported'
   endif
   command -nargs=* -complete=file -bang Termdebug echoerr err
   command -nargs=+ -complete=file -bang TermdebugCommand echoerr err
   finish
 endif
 
- var keepcpo = &cpo
+# I think this could be removed in Vim9
+var keepcpo = &cpo
 set cpo&vim
 
 # The command that starts debugging, e.g. ":Termdebug vim".
@@ -68,15 +98,6 @@ set cpo&vim
 command -nargs=* -complete=file -bang Termdebug call StartDebug(<bang>0, <f-args>)
 command -nargs=+ -complete=file -bang TermdebugCommand call StartDebugCommand(<bang>0, <f-args>)
 
- var pc_id = 12
- var asm_id = 13
- var break_id = 14  # breakpoint number is added to this
- var stopped = 1
- var running = 0
-
- var parsing_disasm_msg = 0
- var asm_lines = []
- var asm_addr = ''
 
 # Take a breakpoint number as used by GDB and turn it into an integer.
 # The breakpoint may contain a dot: 123.4 -> 123004
@@ -108,20 +129,20 @@ enddef
 def InitAutocmd()
   augroup TermDebug
     autocmd!
-    autocmd ColorScheme * call InitHighlight()
+    autocmd ColorScheme * InitHighlight()
   augroup END
 enddef
 
 # Get the command to execute the debugger as a list, defaults to ["gdb"].
-def GetCommand()
+def GetCommand(): list<string>
+  var cmd = 'gdb'
   if exists('g:termdebug_config')
-    var cmd = get(g:termdebug_config, 'command', 'gdb')
+    = get(g:termdebug_config, 'command', 'gdb')
   elseif exists('g:termdebugger')
-    var cmd = g:termdebugger
-  else
-    var cmd = 'gdb'
+    cmd = g:termdebugger
   endif
 
+  # Sweet!
   return type(cmd) == v:t_list ? copy(cmd) : [cmd]
 enddef
 
@@ -131,17 +152,17 @@ enddef
 
 def StartDebug(bang: bool, ...gdb_args: list<string>)
   # First argument is the command to debug, second core file or process ID.
-  call StartDebug_internal({'gdb_args': gdb_args, 'bang': bang})
+  StartDebug_internal({'gdb_args': gdb_args, 'bang': bang})
 enddef
 
-def StartDebugCommand(bang: bool, ...args: list<string>)
+def StartDebugCommand(bang: bool, ...args: list<string>) # TODO: check!
   # First argument is the command to debug, rest are run arguments.
-  call StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[0:], 'bang': bang})
+  StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[1:], 'bang': bang})
 enddef
 
 
 def StartDebug_internal(dict: dict<any>)
-  if exists('s:gdbwin')
+  if exists('gdbwin')
       Echoerr('Terminal debugger already running, cannot run two')
     return
   endif
@@ -150,13 +171,6 @@ def StartDebug_internal(dict: dict<any>)
       Echoerr('Cannot execute debugger program "' .. gdbcmd[0] .. '"')
     return
   endif
-
-  var ptywin = 0
-  var pid = 0
-  var asmwin = 0
-  var asmbuf = 0
-  var varwin = 0
-  var varbuf = 0
 
   if exists('#User#TermdebugStartPre')
     doauto <nomodeline> User TermdebugStartPre
