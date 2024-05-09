@@ -348,6 +348,7 @@ def StartDebug_term(dict: dict<any>)
   ch_log('executing "' . join(gdb_cmd) . '"')
   # TODO: open below-left to leave more space to the windows
   gdbbuf = term_start(gdb_cmd, {
+	\ 'term_name': 'gdb',
 	\ 'term_finish': 'close',
 	\ })
   if gdbbuf == 0
@@ -363,7 +364,7 @@ def StartDebug_term(dict: dict<any>)
   var success = false
   while success == false || counter < counter_max
     if CheckGdbRunning() != 'ok'
-      return
+      success = true
     endif
 
     for lnum in range(1, 200)
@@ -372,8 +373,8 @@ def StartDebug_term(dict: dict<any>)
       endif
     endfor
 
+    # Each count is 10ms
     counter += 1
-    # Each counter is 10ms
     sleep 10m
   endwhile
 
@@ -394,9 +395,9 @@ def StartDebug_term(dict: dict<any>)
 
   # Wait for the response to show up, users may not notice the error and wonder
   # why the debugger doesn't work.
-  try_count = 0
+  success = false
   # TODO: FIX in Vim9 while loop cannot be shortned!
-  while 1
+  while success == false
     if CheckGdbRunning() != 'ok'
       return
     endif
@@ -416,7 +417,7 @@ def StartDebug_term(dict: dict<any>)
         endif
         if response =~ 'New UI allocated'
           # Success!
-          break
+          success = true
         endif
       elseif line1 =~ 'Reading symbols from' && line2 !~ 'new-ui mi '
             # Reading symbols might take a while, try more times
