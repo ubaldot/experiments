@@ -63,6 +63,9 @@ var asm_addr = ''
 var gbdbuf = -1
 var varbuf = -1
 var asmbuf = -1
+# This is for the "debugged program" thing
+var ptybuf = -1
+var commbuf = -1
 
 # These changes because they relate to windows
 # TODO they may be lists because windows are generally returned as lists
@@ -71,6 +74,13 @@ var gbdwim = []
 var varwin = 0
 var asmwin = 0
 var ptywin = 0
+var sourcewin = 0
+
+var signcolumn_buflist = [bufnr()]
+var save_columns = 0
+var allleft = 0
+# This was s:vertical but I cannot use vertical as variable name
+var vvertical = 0
 
 # Need either the +terminal feature or +channel and the prompt buffer.
 # The terminal feature does not work with gdb on win32.
@@ -179,45 +189,46 @@ def StartDebug_internal(dict: dict<any>)
    # Uncomment this line to write logging in "debuglog".
    # call ch_logfile('debuglog', 'w')
 
-  var sourcewin = win_getid()
+  sourcewin = win_getid()
 
   # Remember the old value of 'signcolumn' for each buffer that it's set in, so
   # that we can restore the value for all buffers.
   var b:save_signcolumn = &signcolumn
   var signcolumn_buflist = [bufnr()]
 
-  var save_columns = 0
-  var allleft = 0
-  var wide = 0
+  save_columns = 0
+  allleft = 0
+  wide = 0
+
   if exists('g:termdebug_config')
-    var wide = get(g:termdebug_config, 'wide', 0)
+    wide = get(g:termdebug_config, 'wide', 0)
   elseif exists('g:termdebug_wide')
-    var wide = g:termdebug_wide
+    wide = g:termdebug_wide
   endif
   if wide > 0
     if &columns < wide
-      var save_columns = &columns
-      var &columns = wide
+      save_columns = &columns
+      &columns = wide
        # If we make the Vim window wider, use the whole left half for the debug
        # windows.
       var allleft = 1
     endif
-      var vertical = 1
+      vvertical = 1
   else
-      var vertical = 0
+      vvertical = 0
   endif
 
   # Override using a terminal window by setting g:termdebug_use_prompt to 1.
   var use_prompt = 0
   if exists('g:termdebug_config')
-    var use_prompt = get(g:termdebug_config, 'use_prompt', 0)
+    use_prompt = get(g:termdebug_config, 'use_prompt', 0)
   elseif exists('g:termdebug_use_prompt')
-    var use_prompt = g:termdebug_use_prompt
+    use_prompt = g:termdebug_use_prompt
   endif
   if has('terminal') && !has('win32') && !use_prompt
-    var way = 'terminal'
+    way = 'terminal'
   else
-    var way = 'prompt'
+    way = 'prompt'
   endif
 
 
@@ -227,6 +238,7 @@ def StartDebug_internal(dict: dict<any>)
      StartDebug_term(dict)
   endif
 
+  # Add eventual other windows here
   if GetDisasmWindow()
     var curwinid = win_getid()
     GotoAsmwinOrCreateIt()
@@ -248,18 +260,18 @@ enddef
 def CloseBuffers()
   exe 'bwipe! ' . ptybuf
   exe 'bwipe! ' . commbuf
-  if asmbuf > 0 && bufexists(s:asmbuf)
+  if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' . asmbuf
   endif
-  if varbuf > 0 && bufexists(s:varbuf)
+  if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' . varbuf
   endif
-  var running = 0
+  running = 0
   unlet! gdbwin
 enddef
 
 def CheckGdbRunning(): string
-  var gdbproc = term_getjob(s:gdbbuf)
+  var gdbproc = term_getjob(gdbbuf)
   if gdbproc == v:null || job_status(gdbproc) !=# 'run'
     Echoerr(string(GetCommand()[0]) .. ' exited unexpectedly')
     CloseBuffers()
@@ -270,7 +282,7 @@ enddef
 
 # Open a terminal window without a job, to run the debugged program in.
 def StartDebug_term(dict: dict<any>)
-  var ptybuf = term_start('NONE', {
+  ptybuf = term_start('NONE', {
 	\ 'term_name': 'debugged program',
 	\ 'vertical': vertical,
 	\ })
@@ -279,8 +291,8 @@ def StartDebug_term(dict: dict<any>)
     return
   endif
  var pty = job_info(term_getjob(ptybuf))['tty_out']
- var ptywin = win_getid()
- if vertical
+ ptywin = win_getid()
+ if vvertical
    # Assuming the source code window will get a signcolumn, use two more
    # columns for that, thus one less for the terminal window.
    exe (&columns / 2 - 1) .. "wincmd |"
@@ -291,7 +303,7 @@ def StartDebug_term(dict: dict<any>)
  endif
 
  # Create a hidden terminal window to communicate with gdb
- var commbuf = term_start('NONE', {
+ commbuf = term_start('NONE', {
 	\ 'term_name': 'gdb communication',
 	\ 'out_cb': function('s:CommOutput'),
 	\ 'hidden': 1,
@@ -309,32 +321,32 @@ def StartDebug_term(dict: dict<any>)
   var gdb_cmd = GetCommand()
 
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'command_add_args')
-   var gdb_cmd = g:termdebug_config.command_add_args(gdb_cmd, pty)
+   gdb_cmd = g:termdebug_config.command_add_args(gdb_cmd, pty)
   else
    # Add -quiet to avoid the intro message causing a hit-enter prompt.
-   var gdb_cmd += ['-quiet']
+    gdb_cmd += ['-quiet']
     # Disable pagination, it causes everything to stop at the gdb
-   var gdb_cmd += ['-iex', 'set pagination off']
+    gdb_cmd += ['-iex', 'set pagination off']
    # Interpret commands while the target is running.  This should usually only
    # be exec-interrupt, since many commands don't work properly while the
    # target is running (so execute during startup).
-   var gdb_cmd += ['-iex', 'set mi-async on']
+    gdb_cmd += ['-iex', 'set mi-async on']
    # Open a terminal window to run the debugger.
-   var gdb_cmd += ['-tty', pty]
+    gdb_cmd += ['-tty', pty]
    # Command executed _after_ startup is done, provides us with the necessary
    # feedback
-   var gdb_cmd += ['-ex', 'echo startupdone\n']
+    gdb_cmd += ['-ex', 'echo startupdone\n']
   endif
 
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'command_filter')
-   var gdb_cmd = g:termdebug_config.command_filter(gdb_cmd)
+    gdb_cmd = g:termdebug_config.command_filter(gdb_cmd)
   endif
 
   # Adding arguments requested by the user
-  var gdb_cmd += gdb_args
+  gdb_cmd += gdb_args
 
   ch_log('executing "' . join(gdb_cmd) . '"')
-  var gdbbuf = term_start(gdb_cmd, {
+  gdbbuf = term_start(gdb_cmd, {
 	\ 'term_finish': 'close',
 	\ })
   if gdbbuf == 0
