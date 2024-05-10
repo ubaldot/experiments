@@ -68,7 +68,8 @@ var promptbuf = 0
 var ptybuf = 0
 var commbuf = 0
 
-# UBA They shall be initialized with... nothing.
+# UBA They shall be initialized with... nothing? Or we should kill this job and
+# close this channel when we reassign?
 var gdbjob = job_start('NONE')
 var gdb_channel = ch_open('127.0.0.1:1234')
 # These changes because they relate to windows
@@ -107,6 +108,10 @@ var allleft = 0
 var vvertical = 0
 
 var winbar_winids = []
+var plus_map_saved = {}
+var minus_map_saved = {}
+var k_map_saved = {}
+var saved_mousemodel = ''
 
 
 # Need either the +terminal feature or +channel and the prompt buffer.
@@ -201,7 +206,7 @@ enddef
 
 
 def StartDebug_internal(dict: dict<any>)
-  if gdbbuf > 0
+  if gdbwin > 0
     Echoerr('Terminal debugger already running, cannot run two')
     return
   endif
@@ -256,7 +261,7 @@ def StartDebug_internal(dict: dict<any>)
   endif
 
   # UBA
-  way = 'prompt'
+  # way = 'prompt'
 
   if way == 'prompt'
     StartDebug_prompt(dict)
@@ -284,12 +289,8 @@ enddef
 
 # Use when debugger didn't start or ended.
 def CloseBuffers()
-  if ptybuf > 0
-    exe 'bwipe! ' .. ptybuf
-  endif
-  if commbuf > 0
-    exe 'bwipe! ' .. commbuf
-  endif
+  exe 'bwipe! ' .. ptybuf
+  exe 'bwipe! ' .. commbuf
   if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
@@ -596,7 +597,7 @@ def StartDebugCommon(dict: dict<any>)
 
   # Install debugger commands in the text window.
   win_gotoid(sourcewin)
-  # InstallCommands()
+  InstallCommands()
   win_gotoid(gdbwin)
 
   # Enable showing a balloon with eval info
@@ -637,7 +638,7 @@ enddef
 # This is global so that a user can create their mappings with this.
 def TermDebugSendCommand(cmd: string)
   if way == 'prompt'
-    ch_sendraw(gdb_channel, cmd . "\n")
+    ch_sendraw(gdb_channel, cmd .. "\n")
   else
     var do_continue = 0
     if !stopped
@@ -646,7 +647,7 @@ def TermDebugSendCommand(cmd: string)
       sleep 10m
     endif
     # TODO: should we prepend CTRL-U to clear the command?
-    term_sendkeys(gdbbuf, cmd . "\r")
+    term_sendkeys(gdbbuf, cmd .. "\r")
     if do_continue
       Continue
     endif
@@ -709,8 +710,6 @@ def GdbOutCallback(channel: any, text: string)
 
   var decoded_text = ''
   if text =~ '^\^error,msg='
-    # UBA
-    # decoded_text = "foo"
     decoded_text = DecodeMessage(text[11 : ], false)
     if exists('evalexpr') && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
       # Silently drop evaluation errors.
@@ -720,8 +719,6 @@ def GdbOutCallback(channel: any, text: string)
     endif
   elseif text[0] == '~'
     decoded_text = DecodeMessage(text[1 : ], false)
-  # UBA
-  # decoded_text = "foo"
   else
     CommOutput(channel, text)
     return
@@ -769,14 +766,10 @@ def DecodeMessage(quotedText: string, literal: bool): string
         \ ->substitute('\\\\', '\', 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
   if !literal
-    # UBA
-    # echom msg
     return msg
           \ ->substitute('\\t', "\t", 'g')
           \ ->substitute('\\n', '', 'g')
   else
-    # UBA
-    # echom msg
     return msg
   endif
 enddef
@@ -850,7 +843,7 @@ def EndDebugCommon()
   endif
 
   # UBA
-  # DeleteCommands()
+  DeleteCommands()
 
   win_gotoid(curwinid)
 
@@ -909,8 +902,8 @@ enddef
 def HandleDisasmMsg(msg: string)
   if msg =~ '^\^done'
     var curwinid = win_getid()
-    if win_gotoid(s:asmwin)
-      silent! %delete _
+    if win_gotoid(asmwin)
+      silent! :%delete _
       setline(1, asm_lines)
       set nomodified
       set filetype=asm
@@ -963,7 +956,7 @@ def ParseVarinfo(varinfo: any): dict<any>
   # 'type' maybe is a url-like string,
   # try to shorten it and show only the /tail
   dict['type'] = (varinfo[typeIdx[1] + 7 : typeIdx[2] - 2])->fnamemodify(':t')
-  valueIdx = matchstrpos(varinfo, ',value="\(.*\)"}')
+  var valueIdx = matchstrpos(varinfo, ',value="\(.*\)"}')
   if valueIdx[1] == -1
     dict['value'] = 'Complex value'
   else
@@ -975,7 +968,7 @@ enddef
 def HandleVariablesMsg(msg: string)
   var curwinid = win_getid()
   if win_gotoid(varwin)
-    silent! %delete _
+    silent! :%delete _
     var spaceBuffer = 20
     setline(1, 'Type' ..
           \ repeat(' ', 16) ..
@@ -994,7 +987,7 @@ def HandleVariablesMsg(msg: string)
             \ repeat(' ', max([20 - len(vardict['name']), 1])) ..
             \ vardict['value'])
       cnt += 1
-      varinfo = matchstr(a:msg, capture, 0, cnt)
+      varinfo = matchstr(msg, capture, 0, cnt)
     endwhile
   endif
   win_gotoid(curwinid)
@@ -1003,37 +996,40 @@ enddef
 
 # Handle a message received from gdb on the GDB/MI interface.
 def CommOutput(chan: any, message: string)
- var msgs = split(message, "\r")
+  var msgs = split(message, "\r")
 
-  for msg in msgs
+  var msg = ''
+  for received_msg in msgs
     # remove prefixed NL
     if msg[0] == "\n"
-      msg = msg[1:]
+      msg = received_msg[1 : ]
+    else
+      msg = received_msg
     endif
 
     if parsing_disasm_msg
       HandleDisasmMsg(msg)
     elseif msg != ''
       if msg =~ '^\(\*stopped\|\*running\|=thread-selected\)'
-         HandleCursor(msg)
+      # HandleCursor(msg)
       elseif msg =~ '^\^done,bkpt=' || msg =~ '^=breakpoint-created,'
-         HandleNewBreakpoint(msg, 0)
+      # HandleNewBreakpoint(msg, 0)
       elseif msg =~ '^=breakpoint-modified,'
-         HandleNewBreakpoint(msg, 1)
+      # HandleNewBreakpoint(msg, 1)
       elseif msg =~ '^=breakpoint-deleted,'
-         HandleBreakpointDelete(msg)
+      # HandleBreakpointDelete(msg)
       elseif msg =~ '^=thread-group-started'
-         HandleProgramRun(msg)
+      # HandleProgramRun(msg)
       elseif msg =~ '^\^done,value='
-         HandleEvaluate(msg)
+      # HandleEvaluate(msg)
       elseif msg =~ '^\^error,msg='
-         HandleError(msg)
+      # HandleError(msg)
       elseif msg =~ '^&"disassemble'
         parsing_disasm_msg = 1
         asm_lines = []
-	 HandleDisasmMsg(msg)
+        HandleDisasmMsg(msg)
       elseif msg =~ '^\^done,variables='
-	 HandleVariablesMsg(msg)
+        HandleVariablesMsg(msg)
       endif
     endif
   endfor
@@ -1049,9 +1045,247 @@ def GotoProgram()
   endif
 enddef
 
+# Install commands in the current window to control the debugger.
+def InstallCommands()
+  #   # UBA :check
+  var save_cpo = &cpo
+  set cpo&vim
+
+  # command -nargs=? Break  SetBreakpoint(<q-args>)
+  # command -nargs=? Tbreak  SetBreakpoint(<q-args>, true)
+  # command Clear  ClearBreakpoint()
+  command Step  SendResumingCommand('-exec-step')
+  command Over  SendResumingCommand('-exec-next')
+  command -nargs=? Until  Until(<q-args>)
+  command Finish  SendResumingCommand('-exec-finish')
+  # command -nargs=* Run  Run(<q-args>)
+  command -nargs=* Arguments  SendResumingCommand('-exec-arguments ' .. <q-args>)
+
+  if way == 'prompt'
+    command Stop  PromptInterrupt()
+    command Continue  SendCommand('continue')
+  else
+    command Stop  SendCommand('-exec-interrupt')
+    # using -exec-continue results in CTRL-C in the gdb window not working,
+    # communicating via commbuf (= use of SendCommand) has the same result
+    # command Continue   SendCommand('-exec-continue')
+    command Continue  term_sendkeys(gdbbuf, "continue\r")
+  endif
+
+  # command -nargs=* Frame  Frame(<q-args>)
+  # command -count=1 Up  Up(<count>)
+  # command -count=1 Down  Down(<count>)
+
+  # command -range -nargs=* Evaluate  Evaluate(<range>, <q-args>)
+  command Gdb  win_gotoid(gdbwin)
+  command Program  GotoProgram()
+  # command Source  GotoSourcewinOrCreateIt()
+  # command Asm  GotoAsmwinOrCreateIt()
+  # command Var  GotoVariableswinOrCreateIt()
+  command Winbar  InstallWinbar(1)
+
+  var map = 1
+  if exists('g:termdebug_config')
+    map = get(g:termdebug_config, 'map_K', 1)
+  elseif exists('g:termdebug_map_K')
+    map = g:termdebug_map_K
+  endif
+
+  # if map
+  # k_map_saved = maparg('K', 'n', 0, 1)
+  # if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
+  #   nnoremap K :Evaluate<CR>
+  # endif
+  # endif
+
+  map = 1
+  if exists('g:termdebug_config')
+    map = get(g:termdebug_config, 'map_plus', 1)
+  endif
+  # if map
+  #   plus_map_saved = maparg('+', 'n', 0, 1)
+  #   if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
+  #     nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+  #   endif
+  # endif
+
+  # map = 1
+  # if exists('g:termdebug_config')
+  #   map = get(g:termdebug_config, 'map_minus', 1)
+  # endif
+  # if map
+  #   minus_map_saved = maparg('-', 'n', 0, 1)
+  #   if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
+  #     nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+  #   endif
+  # endif
+
+
+  if has('menu') && &mouse != ''
+    InstallWinbar(0)
+
+    var popup = 1
+    if exists('g:termdebug_config')
+      popup = get(g:termdebug_config, 'popup', 1)
+    elseif exists('g:termdebug_popup')
+      popup = g:termdebug_popup
+    endif
+
+    if popup
+      saved_mousemodel = &mousemodel
+      &mousemodel = 'popup_setpos'
+      an 1.200 PopUp.-SEP3-	<Nop>
+      an 1.210 PopUp.Set\ breakpoint	:Break<CR>
+      an 1.220 PopUp.Clear\ breakpoint	:Clear<CR>
+      an 1.230 PopUp.Run\ until		:Until<CR>
+      an 1.240 PopUp.Evaluate		:Evaluate<CR>
+    endif
+  endif
+
+  &cpo = save_cpo
+enddef
+
+# Install the window toolbar in the current window.
+def InstallWinbar(force: number)
+  # install the window toolbar by default, can be disabled in the config
+  var winbar = 1
+  if exists('g:termdebug_config')
+    winbar = get(g:termdebug_config, 'winbar', 1)
+  endif
+
+  if has('menu') && &mouse != '' && (winbar || force)
+    nnoremenu WinBar.Step   :Step<CR>
+    nnoremenu WinBar.Next   :Over<CR>
+    nnoremenu WinBar.Finish :Finish<CR>
+    # nnoremenu WinBar.Cont   :Continue<CR>
+    # nnoremenu WinBar.Stop   :Stop<CR>
+    # nnoremenu WinBar.Eval   :Evaluate<CR>
+    add(winbar_winids, win_getid())
+  endif
+enddef
+
+# Delete installed debugger commands in the current window.
+def DeleteCommands()
+  # delcommand Break
+  # delcommand Tbreak
+  # delcommand Clear
+  delcommand Step
+  delcommand Over
+  delcommand Until
+  delcommand Finish
+  # delcommand Run
+  delcommand Arguments
+  delcommand Stop
+  delcommand Continue
+  # delcommand Frame
+  # delcommand Up
+  # delcommand Down
+  # delcommand Evaluate
+  delcommand Gdb
+  delcommand Program
+  # delcommand Source
+  # delcommand Asm
+  # delcommand Var
+  delcommand Winbar
+
+  # if exists('k_map_saved')
+  #   if !empty(k_map_saved) && !k_map_saved.buffer
+  #     nunmap K
+  #     mapset(k_map_saved)
+  #   elseif empty(k_map_saved)
+  #     nunmap K
+  #   endif
+    # UBA: unlet again
+    # unlet k_map_saved
+  # endif
+  # if exists('plus_map_saved')
+  #   if !empty(plus_map_saved) && !plus_map_saved.buffer
+  #     nunmap +
+  #     mapset(plus_map_saved)
+  #   elseif empty(plus_map_saved)
+  #     nunmap +
+  #   endif
+    # UBA: unlet again
+    # unlet plus_map_saved
+  # endif
+  # if exists('minus_map_saved')
+  #   if !empty(minus_map_saved) && !minus_map_saved.buffer
+  #     nunmap -
+  #     mapset(minus_map_saved)
+  #   elseif empty(minus_map_saved)
+  #     nunmap -
+  #   endif
+    # UBA: unlet....
+    # unlet minus_map_saved
+  # endif
+
+  if has('menu')
+    # Remove the WinBar entries from all windows where it was added.
+    var curwinid = win_getid()
+    # UBA
+    echom winbar_winids
+    for winid in winbar_winids
+      if win_gotoid(winid)
+        aunmenu WinBar.Step
+        aunmenu WinBar.Next
+        aunmenu WinBar.Finish
+        aunmenu WinBar.Cont
+        aunmenu WinBar.Stop
+        aunmenu WinBar.Eval
+      endif
+    endfor
+    win_gotoid(curwinid)
+    winbar_winids = []
+
+    if exists('saved_mousemodel')
+      &mousemodel = saved_mousemodel
+      # unlet saved_mousemodel
+      aunmenu PopUp.-SEP3-
+      aunmenu PopUp.Set\ breakpoint
+      aunmenu PopUp.Clear\ breakpoint
+      aunmenu PopUp.Run\ until
+      aunmenu PopUp.Evaluate
+    endif
+  endif
+
+  sign_unplace('TermDebug')
+  # UDA: unlet
+  # unlet breakpoints
+  # unlet breakpoint_locations
+
+  sign_undefine('debugPC')
+  # UBA
+  # sign_undefine(BreakpointSigns->map("'debugBreakpoint' .. v:val"))
+  # BreakpointSigns = []
+enddef
+
+
+# :Until - Execute until past a specified position or current line
+def Until(at: string)
+
+  if stopped
+    # reset stopped here, it may take a bit of time before we get a response
+    stopped = 0
+    ch_log('assume that program is running after this command')
+
+    # Use the fname:lnum format
+    var AT = empty(at) ?
+          \ fnameescape(expand('%:p')) .. ':' .. line('.') : at
+    SendCommand('-exec-until ' .. AT)
+  else
+    ch_log('dropping command, program is running: exec-until')
+  endif
+enddef
+
 ######## STUBS ##############################################################
 
 def BufUnloaded()
+  echom "gdbbuf: " .. gdbbuf
+  echom " asmbuf: " .. asmbuf
+  echom " promptbuf: " .. promptbuf
+# This is for the "debugged program" thing
+  echom " ptybuf: " .. ptybuf
+  echom " commbuf: " ..  commbuf
   echom "Good bye!"
 enddef
 
