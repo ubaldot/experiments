@@ -9,3 +9,8 @@ Notes:
      haven't understood what is for...
   3. In the original script there were a number of unlet and I don't know how
      to handle them in vim9
+  4.  Do we still need the following in Vim9?
+      var save_cpo = &cpo
+      set cpo&vim
+  5. When I declare a variable without defining it (e.g. var foo: string) does
+     foo takes value null_string?

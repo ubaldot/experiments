@@ -1,5 +1,6 @@
 * Keep in adding pieces to termdebug9_testing.vim and test
 * If something does not work, you may need to re-run the script
+* Consider an init function to initialize the script variables
 
 # Test also user defined commands TermDebugSendCommand()
 # Test to open and close

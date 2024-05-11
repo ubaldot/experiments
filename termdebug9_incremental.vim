@@ -68,10 +68,10 @@ var promptbuf = 0
 var ptybuf = 0
 var commbuf = 0
 
-# UBA They shall be initialized with... nothing? Or we should kill this job and
-# close this channel when we reassign?
-var gdbjob = job_start('NONE')
-var gdb_channel = ch_open('127.0.0.1:1234')
+# var gdbjob: job
+var gdbjob = null_job
+# var gdb_channel: channel
+var gdb_channel = null_channel
 # These changes because they relate to windows
 var pid = 0
 var gdbwin = 0
@@ -161,7 +161,7 @@ enddef
 
 # Define the default highlighting, using the current 'background' value.
 def InitHighlight()
-  call Highlight(1, '', &background)
+  Highlight(1, '', &background)
   hi default debugBreakpoint term=reverse ctermbg=red guibg=red
   hi default debugBreakpointDisabled term=reverse ctermbg=gray guibg=gray
 enddef
@@ -220,13 +220,14 @@ def StartDebug_internal(dict: dict<any>)
     doauto <nomodeline> User TermdebugStartPre
   endif
 
+  # UBA
+  # Add init function here
+  #
   # Uncomment this line to write logging in "debuglog".
   # call ch_logfile('debuglog', 'w')
 
   # Assume current window is the source code window
   sourcewin = win_getid()
-  save_columns = 0
-  allleft = 0
   var wide = 0
 
   if exists('g:termdebug_config')
@@ -300,9 +301,11 @@ def CloseBuffers()
   running = 0
   # TODO: Check if this is OK
   # unlet! gdbwin = 0
+  # from vim9.txt use gdbwin = null but it does not work
   gdbwin = 0
 enddef
 
+# IsGdbRunning(): bool may be a better name?
 def CheckGdbRunning(): string
   var gdbproc = term_getjob(gdbbuf)
   var gdbproc_status = 'unknwown'
@@ -390,8 +393,8 @@ def StartDebug_term(dict: dict<any>)
         \ 'term_name': gdb_cmd[0],
         \ 'term_finish': 'close',
         \ })
+  # UBA: buffer name is the same as the gdb command.
   # \ 'term_name': 'gdb',
-  # UBA
   if gdbbuf == 0
     Echoerr('Failed to open the gdb terminal window')
     CloseBuffers()
@@ -713,7 +716,7 @@ def GdbOutCallback(channel: any, text: string)
     decoded_text = DecodeMessage(text[11 : ], false)
     if exists('evalexpr') && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
       # Silently drop evaluation errors.
-      # UBA commented this
+      # UBA: who is evalexpr?
       # unlet evalexpr
       return
     endif
@@ -756,8 +759,8 @@ def DecodeMessage(quotedText: string, literal: bool): string
         \ ->substitute('\\000', NullRepl, 'g')
         # UBA IMPORTANT! Why a lambda function as second argument of substitute? (The
         # following is the original)
-        # \ ->substitute('\\\o\o\o',  => eval('"' .. submatch(0) .. '"'), 'g')
-        \ ->substitute('\\\o\o\o',  eval('"' .. submatch(0) .. '"'), 'g')
+        \ ->substitute('\\\o\o\o',  => '"' .. submatch(0) .. '"', 'g')
+        # \ ->substitute('\\\o\o\o',  eval('"' .. submatch(0) .. '"'), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
@@ -776,7 +779,7 @@ enddef
 const NullRepl = 'XXXNULLXXX'
 
 # Extract the "name" value from a gdb message with fullname="name".
-def GetFullname(msg: string)
+def GetFullname(msg: string): string
   if msg !~ 'fullname'
     return ''
   endif
@@ -791,7 +794,7 @@ def GetFullname(msg: string)
 enddef
 
 # Extract the "addr" value from a gdb message with addr="0x0001234".
-def GetAsmAddr(msg: string)
+def GetAsmAddr(msg: string): string
   if msg !~ 'addr='
     return ''
   endif
@@ -834,7 +837,8 @@ def EndDebugCommon()
       exe ":" .. bufnr .. "buf"
       if exists('b:save_signcolumn')
         &signcolumn = b:save_signcolumn
-        unlet b:save_signcolumn
+        # unlet b:save_signcolumn
+        b:save_signcolumn = null
       endif
     endif
   endfor
@@ -879,8 +883,8 @@ def EndPromptDebug(job: any, status: any)
 
   EndDebugCommon()
   # UBA
-  gdbwin = 0
   # unlet gdbwin
+  gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
 enddef
 
@@ -1072,9 +1076,9 @@ def InstallCommands()
     command Continue  term_sendkeys(gdbbuf, "continue\r")
   endif
 
-  # command -nargs=* Frame  Frame(<q-args>)
-  # command -count=1 Up  Up(<count>)
-  # command -count=1 Down  Down(<count>)
+  command -nargs=* Frame  Frame(<q-args>)
+  command -count=1 Up  Up(<count>)
+  command -count=1 Down  Down(<count>)
 
   # command -range -nargs=* Evaluate  Evaluate(<range>, <q-args>)
   command Gdb  win_gotoid(gdbwin)
@@ -1177,9 +1181,9 @@ def DeleteCommands()
   delcommand Arguments
   delcommand Stop
   delcommand Continue
-  # delcommand Frame
-  # delcommand Up
-  # delcommand Down
+  delcommand Frame
+  delcommand Up
+  delcommand Down
   # delcommand Evaluate
   delcommand Gdb
   delcommand Program
@@ -1239,7 +1243,7 @@ def DeleteCommands()
 
     if exists('saved_mousemodel')
       &mousemodel = saved_mousemodel
-      # unlet saved_mousemodel
+      saved_mousemodel = null_string
       aunmenu PopUp.-SEP3-
       aunmenu PopUp.Set\ breakpoint
       aunmenu PopUp.Clear\ breakpoint
@@ -1252,6 +1256,8 @@ def DeleteCommands()
   # UDA: unlet
   # unlet breakpoints
   # unlet breakpoint_locations
+  breakpoints = null_dict
+  breakpoint_locations = null_dict
 
   sign_undefine('debugPC')
   # UBA
@@ -1319,7 +1325,10 @@ def ClearBreakpoint()
                 \ {'id': Breakpoint2SignNumber(id, str2nr(subid))})
         endfor
         # UBA
-        # Check how to remove elements from lists and dicts
+        # Perhaps using remove() is better so we get rid of the keyword unlet
+        # in the script?
+        # remove(breakpoints, id)
+        # remove(breakpoint_locations[bploc], idx)
         unlet breakpoints[id]
         unlet breakpoint_locations[bploc][idx]
         nr = id
@@ -1331,6 +1340,8 @@ def ClearBreakpoint()
 
     if nr != 0
       if empty(breakpoint_locations[bploc])
+        # UBA What if we use the following:
+        # remove(breakpoint_locations, bploc)
         unlet breakpoint_locations[bploc]
       endif
       # UBA:
@@ -1350,6 +1361,38 @@ def Run(args: string)
   endif
     SendResumingCommand('-exec-run')
 enddef
+
+# :Frame - go to a specific frame in the stack
+def Frame(arg: string)
+  # Note: we explicit do not use mi's command
+  # call SendCommand('-stack-select-frame "' . arg .'"')
+  # as we only get a "done" mi response and would have to open the file
+  # 'manually' - using cli command "frame" provides us with the mi response
+  # already parsed and allows for more formats
+  if arg =~ '^\d\+$' || arg == ''
+    # specify frame by number
+    SendCommand('-interpreter-exec mi "frame ' .. arg ..'"')
+  elseif arg =~ '^0x[0-9a-fA-F]\+$'
+    # specify frame by stack address
+    SendCommand('-interpreter-exec mi "frame address ' .. arg ..'"')
+  else
+    # specify frame by function name
+    SendCommand('-interpreter-exec mi "frame function ' .. arg ..'"')
+  endif
+enddef
+
+# :Up - go count frames in the stack "higher"
+def Up(count: number)
+  # the 'correct' one would be -stack-select-frame N, but we don't know N
+  SendCommand($'-interpreter-exec console "up {a:count}"')
+enddef
+
+# :Down - go count frames in the stack "below"
+def Down(count: number)
+  # the 'correct' one would be -stack-select-frame N, but we don't know N
+  SendCommand($'-interpreter-exec console "down {a:count}"')
+enddef
+
 ######## STUBS ##############################################################
 
 def BufUnloaded()
