@@ -2,6 +2,7 @@ Feature changes:
   1. gdb terminal/buffer name is the same of the gdb program used (e.g. gdb,
      arm-none-eabi-gdb, mygdb, etc)
   2. Added <Plug> for allowing mappings
+  3. Addes save win view at the beginning
 
 Notes:
   1. There are many any types
