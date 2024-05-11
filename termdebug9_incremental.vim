@@ -1051,14 +1051,14 @@ def InstallCommands()
   var save_cpo = &cpo
   set cpo&vim
 
-  # command -nargs=? Break  SetBreakpoint(<q-args>)
-  # command -nargs=? Tbreak  SetBreakpoint(<q-args>, true)
-  # command Clear  ClearBreakpoint()
+  command -nargs=? Break  SetBreakpoint(<q-args>)
+  command -nargs=? Tbreak  SetBreakpoint(<q-args>, true)
+  command Clear  ClearBreakpoint()
   command Step  SendResumingCommand('-exec-step')
   command Over  SendResumingCommand('-exec-next')
   command -nargs=? Until  Until(<q-args>)
   command Finish  SendResumingCommand('-exec-finish')
-  # command -nargs=* Run  Run(<q-args>)
+  command -nargs=* Run  Run(<q-args>)
   command -nargs=* Arguments  SendResumingCommand('-exec-arguments ' .. <q-args>)
 
   if way == 'prompt'
@@ -1157,8 +1157,8 @@ def InstallWinbar(force: number)
     nnoremenu WinBar.Step   :Step<CR>
     nnoremenu WinBar.Next   :Over<CR>
     nnoremenu WinBar.Finish :Finish<CR>
-    # nnoremenu WinBar.Cont   :Continue<CR>
-    # nnoremenu WinBar.Stop   :Stop<CR>
+    nnoremenu WinBar.Cont   :Continue<CR>
+    nnoremenu WinBar.Stop   :Stop<CR>
     # nnoremenu WinBar.Eval   :Evaluate<CR>
     add(winbar_winids, win_getid())
   endif
@@ -1166,14 +1166,14 @@ enddef
 
 # Delete installed debugger commands in the current window.
 def DeleteCommands()
-  # delcommand Break
-  # delcommand Tbreak
-  # delcommand Clear
+  delcommand Break
+  delcommand Tbreak
+  delcommand Clear
   delcommand Step
   delcommand Over
   delcommand Until
   delcommand Finish
-  # delcommand Run
+  delcommand Run
   delcommand Arguments
   delcommand Stop
   delcommand Continue
@@ -1195,8 +1195,8 @@ def DeleteCommands()
   #   elseif empty(k_map_saved)
   #     nunmap K
   #   endif
-    # UBA: unlet again
-    # unlet k_map_saved
+  # UBA: unlet again
+  # unlet k_map_saved
   # endif
   # if exists('plus_map_saved')
   #   if !empty(plus_map_saved) && !plus_map_saved.buffer
@@ -1205,8 +1205,8 @@ def DeleteCommands()
   #   elseif empty(plus_map_saved)
   #     nunmap +
   #   endif
-    # UBA: unlet again
-    # unlet plus_map_saved
+  # UBA: unlet again
+  # unlet plus_map_saved
   # endif
   # if exists('minus_map_saved')
   #   if !empty(minus_map_saved) && !minus_map_saved.buffer
@@ -1215,8 +1215,8 @@ def DeleteCommands()
   #   elseif empty(minus_map_saved)
   #     nunmap -
   #   endif
-    # UBA: unlet....
-    # unlet minus_map_saved
+  # UBA: unlet....
+  # unlet minus_map_saved
   # endif
 
   if has('menu')
@@ -1277,13 +1277,86 @@ def Until(at: string)
   endif
 enddef
 
+# :Break - Set a breakpoint at the cursor position.
+def SetBreakpoint(at: string, tbreak=false)
+  # Setting a breakpoint may not work while the program is running.
+  # Interrupt to make it work.
+  var do_continue = 0
+  if !stopped
+    do_continue = 1
+    Stop
+    sleep 10m
+  endif
+
+  # Use the fname:lnum format, older gdb can't handle --source.
+  var AT = empty(at) ?
+        \ fnameescape(expand('%:p')) .. ':' .. line('.') : at
+  var cmd = ''
+  if tbreak
+    cmd = '-break-insert -t ' .. AT
+  else
+    cmd = '-break-insert ' .. AT
+  endif
+  SendCommand(cmd)
+  if do_continue
+    Continue
+  endif
+enddef
+
+def ClearBreakpoint()
+  var fname = fnameescape(expand('%:p'))
+  var lnum = line('.')
+  var bploc = printf('%s:%d', fname, lnum)
+  var nr = 0
+  if has_key(breakpoint_locations, bploc)
+    var idx = 0
+    for id in breakpoint_locations[bploc]
+      if has_key(breakpoints, id)
+        # Assume this always works, the reply is simply "^done".
+        SendCommand('-break-delete ' .. id)
+        for subid in keys(breakpoints[id])
+          sign_unplace('TermDebug',
+                \ {'id': Breakpoint2SignNumber(id, str2nr(subid))})
+        endfor
+        # UBA
+        # Check how to remove elements from lists and dicts
+        unlet breakpoints[id]
+        unlet breakpoint_locations[bploc][idx]
+        nr = id
+        break
+      else
+        idx += 1
+      endif
+    endfor
+
+    if nr != 0
+      if empty(breakpoint_locations[bploc])
+        unlet breakpoint_locations[bploc]
+      endif
+      # UBA:
+      # id has been replaced with nr. Is it correct?
+      echomsg 'Breakpoint ' .. nr .. ' cleared from line ' .. lnum .. '.'
+    else
+      Echoerr('Internal error trying to remove breakpoint at line ' .. lnum .. '!')
+    endif
+  else
+    echomsg 'No breakpoint to remove at line ' .. lnum .. '.'
+  endif
+enddef
+
+def Run(args: string)
+  if args != ''
+    SendResumingCommand('-exec-arguments ' .. args)
+  endif
+    SendResumingCommand('-exec-run')
+enddef
 ######## STUBS ##############################################################
 
 def BufUnloaded()
   echom "gdbbuf: " .. gdbbuf
   echom " asmbuf: " .. asmbuf
   echom " promptbuf: " .. promptbuf
-# This is for the "debugged program" thing
+  # This is for the "debugged program" thing
   echom " ptybuf: " .. ptybuf
   echom " commbuf: " ..  commbuf
   echom "Good bye!"

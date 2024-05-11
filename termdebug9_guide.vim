@@ -1714,8 +1714,8 @@ def CreateBreakpoint(id, subid, enabled)
   endif
 enddef
 
-def! SplitMsg(s)
-  return split(a:s, '{.\{-}}\zs')
+def SplitMsg(s: string)
+  return split(s, '{.\{-}}\zs')
 enddef
 
 # Handle setting a breakpoint
