@@ -1,0 +1,11 @@
+Feature changes:
+  1. gdb terminal/buffer name is the same of the gdb program used (e.g. gdb,
+     arm-none-eabi-gdb, mygdb, etc)
+  2. Added <Plug> for allowing mappings
+
+Notes:
+  1. There are many any types
+  2. In DecodeMessage() there was a lambda function inside substitute() but I
+     haven't understood what is for...
+  3. In the original script there were a number of unlet and I don't know how
+     to handle them in vim9
