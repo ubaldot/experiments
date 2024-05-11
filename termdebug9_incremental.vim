@@ -97,7 +97,7 @@ var breakpoint_locations = {}
 var evalFromBalloonExpr = 1
 var evalFromBalloonExprResult = ''
 var ignoreEvalError = 1
-
+var evalexpr = ''
 # Remember the old value of 'signcolumn' for each buffer that it's set in, so
 # that we can restore the value for all buffers.
 var signcolumn_buflist = [bufnr()]
@@ -716,8 +716,8 @@ def GdbOutCallback(channel: any, text: string)
     decoded_text = DecodeMessage(text[11 : ], false)
     if exists('evalexpr') && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
       # Silently drop evaluation errors.
-      # UBA: who is evalexpr?
-      # unlet evalexpr
+      # UBA: unlet evalexpr
+      evalexpr = null_string
       return
     endif
   elseif text[0] == '~'
@@ -1359,7 +1359,7 @@ def Run(args: string)
   if args != ''
     SendResumingCommand('-exec-arguments ' .. args)
   endif
-    SendResumingCommand('-exec-run')
+  SendResumingCommand('-exec-run')
 enddef
 
 # :Frame - go to a specific frame in the stack
@@ -1393,6 +1393,28 @@ def Down(count: number)
   SendCommand($'-interpreter-exec console "down {a:count}"')
 enddef
 
+def SendEval(expr: string)
+  # check for "likely" boolean expressions, in which case we take it as lhs
+  var exprLHS = substitute(expr, ' *=.*', '', '')
+  if expr =~ "[=!<>]="
+    var exprLHS = expr
+  endif
+
+  # encoding expression to prevent bad errors
+  var expr_escaped = expr
+        \ ->substitute('\\', '\\\\', 'g')
+        \ ->substitute('"', '\\"', 'g')
+  SendCommand('-data-evaluate-expression "' .. expr_escaped .. '"')
+  evalexpr = exprLHS
+enddef
+
+# :Evaluate - evaluate what is specified / under the cursor
+# UBA: Check range type!
+def Evaluate(range: any, arg: any)
+  var expr = GetEvaluationExpression(range, arg)
+  ignoreEvalError = 0
+  SendEval(expr)
+enddef
 ######## STUBS ##############################################################
 
 def BufUnloaded()
