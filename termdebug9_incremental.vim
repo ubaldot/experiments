@@ -180,7 +180,7 @@ enddef
 def GetCommand(): list<string>
   var cmd = 'gdb'
   # UBA
-  # cmd = 'arm-none-eabi-gdb'
+  cmd = 'arm-none-eabi-gdb'
   if exists('g:termdebug_config')
       = get(g:termdebug_config, 'command', 'gdb')
   elseif exists('g:termdebugger')
@@ -1466,6 +1466,101 @@ def CleanupExpr(passed_expr: string): string
   return expr
 enddef
 
+def HandleEvaluate(msg: string)
+  var value = msg
+        \ ->substitute('.*value="\(.*\)"', '\1', '')
+        \ ->substitute('\\"', '"', 'g')
+        \ ->substitute('\\\\', '\\', 'g')
+        #\ multi-byte characters arrive in octal form, replace everything but NULL values
+        \ ->substitute('\\000', NullRepl, 'g')
+        # \ ->substitute('\\\o\o\o', {-> eval('"' .. submatch(0) .. '"')}, 'g')
+        \ ->substitute('\\\o\o\o', => '"' .. submatch(0) .. '"', 'g')
+        #\ Note: GDB docs also mention hex encodings - the translations below work
+        #\       but we keep them out for performance-reasons until we actually see
+        #\       those in mi-returns
+        #\ ->substitute('\\0x00', NullRep, 'g')
+        #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
+        \ ->substitute(s:NullRepl, '\\000', 'g')
+  if evalFromBalloonExpr
+    if evalFromBalloonExprResult == ''
+      evalFromBalloonExprResult = evalexpr .. ': ' .. value
+    else
+      evalFromBalloonExprResult .= ' = ' .. value
+    endif
+    balloon_show(s:evalFromBalloonExprResult)
+  else
+    echomsg '"' .. evalexpr .. '": ' .. value
+  endif
+
+  if evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+    # Looks like a pointer, also display what it points to.
+    var ignoreEvalError = 1
+    SendEval('*' .. evalexpr)
+  else
+    evalFromBalloonExpr = 0
+  endif
+enddef
+
+
+# Show a balloon with information of the variable under the mouse pointer,
+# if there is any.
+def TermDebugBalloonExpr()
+  if v:beval_winid != sourcewin
+    return ''
+  endif
+  if !stopped
+    # Only evaluate when stopped, otherwise setting a breakpoint using the
+    # mouse triggers a balloon.
+    return ''
+  endif
+  evalFromBalloonExpr = 1
+  evalFromBalloonExprResult = ''
+  ignoreEvalError = 1
+  var expr = CleanupExpr(v:beval_text)
+  SendEval(expr)
+  return ''
+enddef
+
+# Handle an error.
+def HandleError(msg: string)
+  if ignoreEvalError
+    # Result of SendEval() failed, ignore.
+     ignoreEvalError = 0
+     evalFromBalloonExpr = 0
+    return
+  endif
+   var msgVal = substitute(msg, '.*msg="\(.*\)"', '\1', '')
+  Echoerr(substitute(msgVal, '\\"', '"', 'g'))
+enddef
+
+def GotoSourcewinOrCreateIt()
+  if !win_gotoid(sourcewin)
+    new
+     sourcewin = win_getid()
+    InstallWinbar(0)
+  endif
+enddef
+
+
+def GetDisasmWindow()
+  if exists('g:termdebug_config')
+    return get(g:termdebug_config, 'disasm_window', 0)
+  endif
+  if exists('g:termdebug_disasm_window')
+    return g:termdebug_disasm_window
+  endif
+  return 0
+enddef
+
+def GetDisasmWindowHeight()
+  if exists('g:termdebug_config')
+    return get(g:termdebug_config, 'disasm_window_height', 0)
+  endif
+  if exists('g:termdebug_disasm_window') && g:termdebug_disasm_window > 1
+    return g:termdebug_disasm_window
+  endif
+  return 0
+enddef
 ######## STUBS ##############################################################
 
 def BufUnloaded()
