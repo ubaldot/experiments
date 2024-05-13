@@ -94,9 +94,9 @@ var breakpoints = {}
 var breakpoint_locations = {}
 
 
-var evalFromBalloonExpr = 1
+var evalFromBalloonExpr = 0
 var evalFromBalloonExprResult = ''
-var ignoreEvalError = 1
+var ignoreEvalError = 0
 var evalexpr = ''
 # Remember the old value of 'signcolumn' for each buffer that it's set in, so
 # that we can restore the value for all buffers.
@@ -137,8 +137,9 @@ set cpo&vim
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
-command -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
-command -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
+# UBA :Remove the !
+command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
+command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
 
 
 # Take a breakpoint number as used by GDB and turn it into an integer.
@@ -179,7 +180,7 @@ enddef
 def GetCommand(): list<string>
   var cmd = 'gdb'
   # UBA
-  cmd = 'arm-none-eabi-gdb'
+  # cmd = 'arm-none-eabi-gdb'
   if exists('g:termdebug_config')
       = get(g:termdebug_config, 'command', 'gdb')
   elseif exists('g:termdebugger')
@@ -1415,6 +1416,56 @@ def Evaluate(range: any, arg: any)
   ignoreEvalError = 0
   SendEval(expr)
 enddef
+
+
+# get what is specified / under the cursor
+def GetEvaluationExpression(range: any, arg: string): string
+  var expr = ''
+  if arg != ''
+    # user supplied evaluation
+    expr = CleanupExpr(arg)
+    # DSW: replace "likely copy + paste" assignment
+    expr = substitute(expr, '"\([^"]*\)": *', '\1=', 'g')
+  elseif range == 2
+    # no evaluation but provided but range set
+    var pos = getcurpos()
+    var regst = getreg('v', 1, 1)
+    var regt = getregtype('v')
+    normal! gv"vy
+    expr = CleanupExpr(@v)
+    setpos('.', pos)
+    setreg('v', regst, regt)
+  else
+    # no evaluation provided: get from C-expression under cursor
+    # TODO: allow filetype specific lookup #9057
+    expr = expand('<cexpr>')
+  endif
+  return expr
+enddef
+
+# clean up expression that may get in because of range
+# (newlines and surrounding whitespace)
+# As it can also be specified via ex-command for assignments this function
+# may not change the "content" parts (like replacing contained spaces)
+def CleanupExpr(passed_expr: string): string
+  # replace all embedded newlines/tabs/...
+  var expr = substitute(passed_expr, '\_s', ' ', 'g')
+
+  if &filetype ==# 'cobol'
+    # extra cleanup for COBOL:
+    # - a semicolon nmay be used instead of a space
+    # - a trailing comma or period is ignored as it commonly separates/ends
+    #   multiple expr
+    expr = substitute(expr, ';', ' ', 'g')
+    expr = substitute(expr, '[,.]\+ *$', '', '')
+  endif
+
+  # get rid of leading and trailing spaces
+  expr = substitute(expr, '^ *', '', '')
+  expr = substitute(expr, ' *$', '', '')
+  return expr
+enddef
+
 ######## STUBS ##############################################################
 
 def BufUnloaded()
