@@ -37,13 +37,10 @@ vim9script
 # The communication with gdb uses GDB/MI.  See:
 # https://sourceware.org/gdb/current/onlinedocs/gdb/GDB_002fMI.html
 
-# TODO: uncomment
 # In case this gets sourced twice.
 # if exists(":Termdebug")
 #   finish
 # endif
-
-# Former s: variables shall be declared outside
 
 var way = 'terminal'
 var err = 'no errors'
@@ -92,6 +89,7 @@ var breakpoints = {}
 # Contains breakpoints by file/lnum.  The key is "fname:lnum".
 # Each entry is a list of breakpoint IDs at that position.
 var breakpoint_locations = {}
+var BreakpointSigns: list<string> = []
 
 
 var evalFromBalloonExpr = 0
@@ -126,7 +124,7 @@ else
   else
     err = 'Cannot debug, +channel feature is not supported'
   endif
-  command! -nargs=* -complete=file -bang Termdebug echoerr err
+  command -nargs=* -complete=file -bang Termdebug echoerr err
   command -nargs=+ -complete=file -bang TermdebugCommand echoerr err
   finish
 endif
@@ -182,7 +180,7 @@ def GetCommand(): list<string>
   # UBA
   cmd = 'arm-none-eabi-gdb'
   if exists('g:termdebug_config')
-      = get(g:termdebug_config, 'command', 'gdb')
+    cmd = get(g:termdebug_config, 'command', 'gdb')
   elseif exists('g:termdebugger')
     cmd = g:termdebugger
   endif
@@ -272,17 +270,17 @@ def StartDebug_internal(dict: dict<any>)
   endif
 
   # TODO Add eventual other windows here
-  # if GetDisasmWindow()
-  #   var curwinid = win_getid()
-  #   GotoAsmwinOrCreateIt()
-  #   win_gotoid(curwinid)
-  # endif
+  if GetDisasmWindow()
+    var curwinid = win_getid()
+    GotoAsmwinOrCreateIt()
+    win_gotoid(curwinid)
+  endif
 
-  # if GetVariablesWindow()
-  #    var curwinid = win_getid()
-  #    GotoVariableswinOrCreateIt()
-  #    win_gotoid(curwinid)
-  # endif
+  if GetVariablesWindow()
+    var curwinid = win_getid()
+    GotoVariableswinOrCreateIt()
+    win_gotoid(curwinid)
+  endif
 
   if exists('#User#TermdebugStartPost')
     doauto <nomodeline> User TermdebugStartPost
@@ -838,8 +836,9 @@ def EndDebugCommon()
       exe ":" .. bufnr .. "buf"
       if exists('b:save_signcolumn')
         &signcolumn = b:save_signcolumn
+        # UBA check
         # unlet b:save_signcolumn
-        b:save_signcolumn = null
+        # b:save_signcolumn = null
       endif
     endif
   endfor
@@ -1016,19 +1015,19 @@ def CommOutput(chan: any, message: string)
       HandleDisasmMsg(msg)
     elseif msg != ''
       if msg =~ '^\(\*stopped\|\*running\|=thread-selected\)'
-      # HandleCursor(msg)
+        HandleCursor(msg)
       elseif msg =~ '^\^done,bkpt=' || msg =~ '^=breakpoint-created,'
-      # HandleNewBreakpoint(msg, 0)
+        HandleNewBreakpoint(msg, 0)
       elseif msg =~ '^=breakpoint-modified,'
-      # HandleNewBreakpoint(msg, 1)
+        HandleNewBreakpoint(msg, 1)
       elseif msg =~ '^=breakpoint-deleted,'
-      # HandleBreakpointDelete(msg)
+        HandleBreakpointDelete(msg)
       elseif msg =~ '^=thread-group-started'
-      # HandleProgramRun(msg)
+        HandleProgramRun(msg)
       elseif msg =~ '^\^done,value='
-      # HandleEvaluate(msg)
+        HandleEvaluate(msg)
       elseif msg =~ '^\^error,msg='
-      # HandleError(msg)
+        HandleError(msg)
       elseif msg =~ '^&"disassemble'
         parsing_disasm_msg = 1
         asm_lines = []
@@ -1081,12 +1080,12 @@ def InstallCommands()
   command -count=1 Up  Up(<count>)
   command -count=1 Down  Down(<count>)
 
-  # command -range -nargs=* Evaluate  Evaluate(<range>, <q-args>)
+  command -range -nargs=* Evaluate  Evaluate(<range>, <q-args>)
   command Gdb  win_gotoid(gdbwin)
   command Program  GotoProgram()
-  # command Source  GotoSourcewinOrCreateIt()
-  # command Asm  GotoAsmwinOrCreateIt()
-  # command Var  GotoVariableswinOrCreateIt()
+  command Source  GotoSourcewinOrCreateIt()
+  command Asm  GotoAsmwinOrCreateIt()
+  command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
   var map = 1
@@ -1096,34 +1095,34 @@ def InstallCommands()
     map = g:termdebug_map_K
   endif
 
-  # if map
-  # k_map_saved = maparg('K', 'n', 0, 1)
-  # if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
-  #   nnoremap K :Evaluate<CR>
-  # endif
-  # endif
+  if map
+    k_map_saved = maparg('K', 'n', 0, 1)
+    if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
+      nnoremap K :Evaluate<CR>
+    endif
+  endif
 
   map = 1
   if exists('g:termdebug_config')
     map = get(g:termdebug_config, 'map_plus', 1)
   endif
-  # if map
-  #   plus_map_saved = maparg('+', 'n', 0, 1)
-  #   if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
-  #     nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-  #   endif
-  # endif
+  if map
+    plus_map_saved = maparg('+', 'n', 0, 1)
+    if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
+      nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+    endif
+  endif
 
-  # map = 1
-  # if exists('g:termdebug_config')
-  #   map = get(g:termdebug_config, 'map_minus', 1)
-  # endif
-  # if map
-  #   minus_map_saved = maparg('-', 'n', 0, 1)
-  #   if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
-  #     nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
-  #   endif
-  # endif
+  map = 1
+  if exists('g:termdebug_config')
+    map = get(g:termdebug_config, 'map_minus', 1)
+  endif
+  if map
+    minus_map_saved = maparg('-', 'n', 0, 1)
+    if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
+      nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+    endif
+  endif
 
 
   if has('menu') && &mouse != ''
@@ -1164,7 +1163,7 @@ def InstallWinbar(force: number)
     nnoremenu WinBar.Finish :Finish<CR>
     nnoremenu WinBar.Cont   :Continue<CR>
     nnoremenu WinBar.Stop   :Stop<CR>
-    # nnoremenu WinBar.Eval   :Evaluate<CR>
+    nnoremenu WinBar.Eval   :Evaluate<CR>
     add(winbar_winids, win_getid())
   endif
 enddef
@@ -1185,44 +1184,47 @@ def DeleteCommands()
   delcommand Frame
   delcommand Up
   delcommand Down
-  # delcommand Evaluate
+  delcommand Evaluate
   delcommand Gdb
   delcommand Program
-  # delcommand Source
-  # delcommand Asm
-  # delcommand Var
+  delcommand Source
+  delcommand Asm
+  delcommand Var
   delcommand Winbar
 
-  # if exists('k_map_saved')
-  #   if !empty(k_map_saved) && !k_map_saved.buffer
-  #     nunmap K
-  #     mapset(k_map_saved)
-  #   elseif empty(k_map_saved)
-  #     nunmap K
-  #   endif
-  # UBA: unlet again
-  # unlet k_map_saved
-  # endif
-  # if exists('plus_map_saved')
-  #   if !empty(plus_map_saved) && !plus_map_saved.buffer
-  #     nunmap +
-  #     mapset(plus_map_saved)
-  #   elseif empty(plus_map_saved)
-  #     nunmap +
-  #   endif
-  # UBA: unlet again
-  # unlet plus_map_saved
-  # endif
-  # if exists('minus_map_saved')
-  #   if !empty(minus_map_saved) && !minus_map_saved.buffer
-  #     nunmap -
-  #     mapset(minus_map_saved)
-  #   elseif empty(minus_map_saved)
-  #     nunmap -
-  #   endif
-  # UBA: unlet....
-  # unlet minus_map_saved
-  # endif
+  if exists('k_map_saved')
+    if !empty(k_map_saved) && !k_map_saved.buffer
+      nunmap K
+      mapset(k_map_saved)
+    elseif empty(k_map_saved)
+      nunmap K
+    endif
+    # UBA: unlet again
+    # unlet k_map_saved
+    k_map_saved = {}
+  endif
+  if exists('plus_map_saved')
+    if !empty(plus_map_saved) && !plus_map_saved.buffer
+      nunmap +
+      mapset(plus_map_saved)
+    elseif empty(plus_map_saved)
+      nunmap +
+    endif
+    # UBA: unlet again
+    # unlet plus_map_saved
+    plus_map_saved = {}
+  endif
+  if exists('minus_map_saved')
+    if !empty(minus_map_saved) && !minus_map_saved.buffer
+      nunmap -
+      mapset(minus_map_saved)
+    elseif empty(minus_map_saved)
+      nunmap -
+    endif
+    # UBA: unlet....
+    # unlet minus_map_saved
+    minus_map_saved = {}
+  endif
 
   if has('menu')
     # Remove the WinBar entries from all windows where it was added.
@@ -1262,8 +1264,8 @@ def DeleteCommands()
 
   sign_undefine('debugPC')
   # UBA
-  # sign_undefine(BreakpointSigns->map("'debugBreakpoint' .. v:val"))
-  # BreakpointSigns = []
+  sign_undefine(BreakpointSigns->map("'debugBreakpoint' .. v:val"))
+  BreakpointSigns = []
 enddef
 
 
@@ -1304,6 +1306,8 @@ def SetBreakpoint(at: string, tbreak=false)
   else
     cmd = '-break-insert ' .. AT
   endif
+  # OK
+  # echom "cmsd: " .. cmd
   SendCommand(cmd)
   if do_continue
     Continue
@@ -1398,7 +1402,7 @@ def SendEval(expr: string)
   # check for "likely" boolean expressions, in which case we take it as lhs
   var exprLHS = substitute(expr, ' *=.*', '', '')
   if expr =~ "[=!<>]="
-    var exprLHS = expr
+    exprLHS = expr
   endif
 
   # encoding expression to prevent bad errors
@@ -1480,21 +1484,21 @@ def HandleEvaluate(msg: string)
         #\       those in mi-returns
         #\ ->substitute('\\0x00', NullRep, 'g')
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
-        \ ->substitute(s:NullRepl, '\\000', 'g')
+        \ ->substitute(NullRepl, '\\000', 'g')
   if evalFromBalloonExpr
     if evalFromBalloonExprResult == ''
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
     else
-      evalFromBalloonExprResult .= ' = ' .. value
+      evalFromBalloonExprResult ..= ' = ' .. value
     endif
-    balloon_show(s:evalFromBalloonExprResult)
+    balloon_show(evalFromBalloonExprResult)
   else
     echomsg '"' .. evalexpr .. '": ' .. value
   endif
 
   if evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
     # Looks like a pointer, also display what it points to.
-    var ignoreEvalError = 1
+    ignoreEvalError = 1
     SendEval('*' .. evalexpr)
   else
     evalFromBalloonExpr = 0
@@ -1504,7 +1508,7 @@ enddef
 
 # Show a balloon with information of the variable under the mouse pointer,
 # if there is any.
-def TermDebugBalloonExpr()
+def TermDebugBalloonExpr(): string
   if v:beval_winid != sourcewin
     return ''
   endif
@@ -1525,24 +1529,24 @@ enddef
 def HandleError(msg: string)
   if ignoreEvalError
     # Result of SendEval() failed, ignore.
-     ignoreEvalError = 0
-     evalFromBalloonExpr = 0
+    ignoreEvalError = 0
+    evalFromBalloonExpr = 0
     return
   endif
-   var msgVal = substitute(msg, '.*msg="\(.*\)"', '\1', '')
+  var msgVal = substitute(msg, '.*msg="\(.*\)"', '\1', '')
   Echoerr(substitute(msgVal, '\\"', '"', 'g'))
 enddef
 
 def GotoSourcewinOrCreateIt()
   if !win_gotoid(sourcewin)
     new
-     sourcewin = win_getid()
+    sourcewin = win_getid()
     InstallWinbar(0)
   endif
 enddef
 
 
-def GetDisasmWindow()
+def GetDisasmWindow(): number
   if exists('g:termdebug_config')
     return get(g:termdebug_config, 'disasm_window', 0)
   endif
@@ -1552,7 +1556,7 @@ def GetDisasmWindow()
   return 0
 enddef
 
-def GetDisasmWindowHeight()
+def GetDisasmWindowHeight(): number
   if exists('g:termdebug_config')
     return get(g:termdebug_config, 'disasm_window_height', 0)
   endif
@@ -1561,21 +1565,406 @@ def GetDisasmWindowHeight()
   endif
   return 0
 enddef
-######## STUBS ##############################################################
 
-def BufUnloaded()
-  echom "gdbbuf: " .. gdbbuf
-  echom " asmbuf: " .. asmbuf
-  echom " promptbuf: " .. promptbuf
-  # This is for the "debugged program" thing
-  echom " ptybuf: " .. ptybuf
-  echom " commbuf: " ..  commbuf
-  echom "Good bye!"
+
+
+def GotoAsmwinOrCreateIt()
+  var mdf = ''
+  if !win_gotoid(asmwin)
+    if win_gotoid(sourcewin)
+      # 60 is approx spaceBuffer * 3
+      if winwidth(0) > (78 + 60)
+        mdf = 'vert'
+        exe mdf .. ' ' .. ':60' .. 'new'
+      else
+        exe 'rightbelow new'
+      endif
+    else
+      exe 'new'
+    endif
+
+    asmwin = win_getid()
+
+    setlocal nowrap
+    setlocal number
+    setlocal noswapfile
+    setlocal buftype=nofile
+    setlocal bufhidden=wipe
+    setlocal signcolumn=no
+    setlocal modifiable
+
+    if asmbuf > 0 && bufexists(asmbuf)
+      exe 'buffer' .. asmbuf
+    else
+      silent file Termdebug-asm-listing
+      asmbuf = bufnr('Termdebug-asm-listing')
+    endif
+
+    if mdf != 'vert' && GetDisasmWindowHeight() > 0
+      exe 'resize ' .. GetDisasmWindowHeight()
+    endif
+  endif
+
+  if asm_addr != ''
+    var lnum = search('^' .. asm_addr)
+    if lnum == 0
+      if stopped
+        SendCommand('disassemble $pc')
+      endif
+    else
+      sign_unplace('TermDebug', {'id': asm_id})
+      sign_place(asm_id, 'TermDebug', 'debugPC', '%', {'lnum': lnum})
+    endif
+  endif
+enddef
+
+def GetVariablesWindow(): number
+  if exists('g:termdebug_config')
+    return get(g:termdebug_config, 'variables_window', 0)
+  endif
+  if exists('g:termdebug_disasm_window')
+    return g:termdebug_variables_window
+  endif
+  return 0
+enddef
+
+def GetVariablesWindowHeight(): number
+  if exists('g:termdebug_config')
+    return get(g:termdebug_config, 'variables_window_height', 0)
+  endif
+  if exists('g:termdebug_variables_window') && g:termdebug_variables_window > 1
+    return g:termdebug_variables_window
+  endif
+  return 0
 enddef
 
 
-# StartDebug()
-#
+def GotoVariableswinOrCreateIt()
+  var mdf = ''
+  if !win_gotoid(varwin)
+    if win_gotoid(sourcewin)
+      # 60 is approx spaceBuffer * 3
+      if winwidth(0) > (78 + 60)
+        mdf = 'vert'
+        exe mdf .. ' ' .. ':60' .. 'new'
+      else
+        exe 'rightbelow new'
+      endif
+    else
+      exe 'new'
+    endif
+
+    varwin = win_getid()
+
+    setlocal nowrap
+    setlocal noswapfile
+    setlocal buftype=nofile
+    setlocal bufhidden=wipe
+    setlocal signcolumn=no
+    setlocal modifiable
+
+    if varbuf > 0 && bufexists(varbuf)
+      exe 'buffer' .. varbuf
+    else
+      silent file Termdebug-variables-listing
+      varbuf = bufnr('Termdebug-variables-listing')
+    endif
+
+    if mdf != 'vert' && GetVariablesWindowHeight() > 0
+      exe 'resize ' .. GetVariablesWindowHeight()
+    endif
+  endif
+
+  if running
+    SendCommand('-stack-list-variables 2')
+  endif
+enddef
+
+# Handle stopping and running message from gdb.
+# Will update the sign that shows the current position.
+def HandleCursor(msg: string)
+  var wid = win_getid()
+
+  if msg =~ '^\*stopped'
+    ch_log('program stopped')
+    stopped = 1
+    if msg =~ '^\*stopped,reason="exited-normally"'
+      running = 0
+    endif
+  elseif msg =~ '^\*running'
+    ch_log('program running')
+    stopped = 0
+    running = 1
+  endif
+
+  var fname = ''
+  if msg =~ 'fullname='
+    fname = GetFullname(msg)
+  endif
+
+  if msg =~ 'addr='
+    var asm_addr_local = GetAsmAddr(msg)
+    if asm_addr_local != ''
+      asm_addr = asm_addr_local
+
+      var curwinid = win_getid()
+      var lnum = 0
+      if win_gotoid(asmwin)
+        lnum = search('^' .. asm_addr)
+        if lnum == 0
+          SendCommand('disassemble $pc')
+        else
+          sign_unplace('TermDebug', {'id': asm_id})
+          sign_place(asm_id, 'TermDebug', 'debugPC', '%', {'lnum': lnum})
+        endif
+
+        win_gotoid(curwinid)
+      endif
+    endif
+  endif
+
+  if running && stopped && bufwinnr('Termdebug-variables-listing') != -1
+    SendCommand('-stack-list-variables 2')
+  endif
+
+  if msg =~ '^\(\*stopped\|=thread-selected\)' && filereadable(fname)
+    var lnum = substitute(msg, '.*line="\([^"]*\)".*', '\1', '')
+    if lnum =~ '^[0-9]*$'
+      GotoSourcewinOrCreateIt()
+      if expand('%:p') != fnamemodify(fname, ':p')
+        echomsg 'different fname: "' .. expand('%:p') .. '" vs "' .. fnamemodify(fname, ':p') .. '"'
+        augroup Termdebug
+          # Always open a file read-only instead of showing the ATTENTION
+          # prompt, since it is unlikely we want to edit the file.
+          # The file may be changed but not saved, warn for that.
+          au SwapExists * echohl WarningMsg
+                \ | echo 'Warning: file is being edited elsewhere'
+                \ | echohl None
+                \ | let v:swapchoice = 'o'
+        augroup END
+        if &modified
+          # TODO: find existing window
+          exe 'split ' .. fnameescape(fname)
+          sourcewin = win_getid()
+          call InstallWinbar(0)
+        else
+          exe 'edit ' .. fnameescape(fname)
+        endif
+        augroup Termdebug
+          au! SwapExists
+        augroup END
+      endif
+      exe ":" .. lnum
+      normal! zv
+      sign_unplace('TermDebug', {'id': pc_id})
+      sign_place(pc_id, 'TermDebug', 'debugPC', fname,
+            \ {'lnum': str2nr(lnum), priority: 110})
+      if !exists('b:save_signcolumn')
+        b:save_signcolumn = &signcolumn
+        add(signcolumn_buflist, bufnr())
+      endif
+      setlocal signcolumn=yes
+    endif
+  elseif !stopped || fname != ''
+    sign_unplace('TermDebug', {'id': pc_id})
+  endif
+
+  win_gotoid(wid)
+enddef
+
+def CreateBreakpoint(id: number, subid: number, enabled: string)
+  var nr = printf('%d.%d', id, subid)
+  if index(BreakpointSigns, nr) == -1
+    add(BreakpointSigns, nr)
+    var hiName = ''
+    if enabled == "n"
+      hiName = "debugBreakpointDisabled"
+    else
+      hiName = "debugBreakpoint"
+    endif
+    var label = ''
+    if exists('g:termdebug_config')
+      label = get(g:termdebug_config, 'sign', '')
+    endif
+    if label == ''
+      label = printf('%02X', id)
+      if id > 255
+        label = 'F+'
+      endif
+    endif
+    sign_define('debugBreakpoint' .. nr,
+          \ {'text': slice(label, 0, 2),
+          \ 'texthl': hiName})
+  endif
+enddef
+
+def SplitMsg(str: string): list<string>
+  return split(str, '{.\{-}}\zs')
+enddef
+
+
+# Handle setting a breakpoint
+# Will update the sign that shows the breakpoint
+def HandleNewBreakpoint(msg: string, modifiedFlag: any)
+  var nr = ''
+
+  # UBA
+  echom "I am inside:"
+  if msg !~ 'fullname='
+    # a watch or a pending breakpoint does not have a file name
+    if msg =~ 'pending='
+      nr = substitute(msg, '.*number=\"\([0-9.]*\)\".*', '\1', '')
+      var target = substitute(msg, '.*pending=\"\([^"]*\)\".*', '\1', '')
+      echomsg 'Breakpoint ' .. nr .. ' (' .. target  .. ') pending.'
+    endif
+    return
+  endif
+
+  for mm in SplitMsg(msg)
+    var fname = GetFullname(mm)
+    if empty(fname)
+      continue
+    endif
+    nr = substitute(mm, '.*number="\([0-9.]*\)\".*', '\1', '')
+    if empty(nr)
+      return
+    endif
+
+    # If "nr" is 123 it becomes "123.0" and subid is "0".
+    # If "nr" is 123.4 it becomes "123.4.0" and subid is "4"; "0" is discarded.
+    var [id, subid; _] = map(split(nr .. '.0', '\.'), 'str2nr(v:val) + 0')
+    # var [id, subid; _] = map(split(nr .. '.0', '\.'), 'v:val + 0')
+    var enabled = substitute(mm, '.*enabled="\([yn]\)".*', '\1', '')
+    # CreateBreakpoint(str2nr(id), str2nr(subid), enabled)
+    CreateBreakpoint(id, subid, enabled)
+
+    var entries = {}
+    var entry = {}
+    if has_key(breakpoints, id)
+      entries = breakpoints[id]
+    else
+      breakpoints[id] = entries
+    endif
+    if has_key(entries, subid)
+      entry = entries[subid]
+    else
+      entries[subid] = entry
+    endif
+
+    # var lnum = substitute(mm, '.*line="\([^"]*\)".*', '\1', '')
+    var lnum = str2nr(substitute(mm, '.*line="\([^"]*\)".*', '\1', ''))
+    entry['fname'] = fname
+    entry['lnum'] = lnum
+
+    var bploc = printf('%s:%d', fname, lnum)
+    if !has_key(breakpoint_locations, bploc)
+      breakpoint_locations[bploc] = []
+    endif
+    breakpoint_locations[bploc] += [id]
+
+    var posMsg = ''
+    if bufloaded(fname)
+      PlaceSign(id, subid, entry)
+      posMsg = ' at line ' .. lnum .. '.'
+    else
+      posMsg = ' in ' .. fname .. ' at line ' .. lnum .. '.'
+    endif
+    var actionTaken = ''
+    if !modifiedFlag
+      actionTaken = 'created'
+    elseif enabled == 'n'
+      actionTaken = 'disabled'
+    else
+      actionTaken = 'enabled'
+    endif
+    echom 'Breakpoint ' .. nr .. ' ' .. actionTaken .. posMsg
+  endfor
+enddef
+
+
+def PlaceSign(id: number, subid: number, entry: dict<any>)
+  var nr = printf('%d.%d', id, subid)
+  sign_place(Breakpoint2SignNumber(id, subid), 'TermDebug',
+        \ 'debugBreakpoint' .. nr, entry['fname'],
+        \ {'lnum': entry['lnum'], priority: 110})
+  entry['placed'] = 1
+enddef
+
+# Handle deleting a breakpoint
+# Will remove the sign that shows the breakpoint
+def HandleBreakpointDelete(msg: string)
+  # UBA CHECK THIS
+  # var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
+  var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '')
+  if empty(id)
+    return
+  endif
+  if has_key(breakpoints, id)
+    for [subid, entry] in items(breakpoints[id])
+      if has_key(entry, 'placed')
+        sign_unplace('TermDebug',
+              \ {'id': Breakpoint2SignNumber(str2nr(id), str2nr(subid))})
+        # UBA:
+        remove(entry, 'placed')
+        # unlet entry['placed']
+      endif
+    endfor
+    # UBA:
+    remove(breakpoints, id)
+    # unlet breakpoints[id]
+    echomsg 'Breakpoint ' .. id .. ' cleared.'
+  endif
+enddef
+
+# Handle the debugged program starting to run.
+# Will store the process ID in pid
+def HandleProgramRun(msg: string)
+  # UBA: ??? Why + 0?
+  # var nr = substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', '') + 0
+  var nr = str2nr(substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', ''))
+  if nr == 0
+    return
+  endif
+  pid = nr
+  ch_log('Detected process ID: ' .. pid)
+enddef
+
+# Handle a BufRead autocommand event: place any signs.
+def BufRead()
+  var fname = expand('<afile>:p')
+  for [id, entries] in items(breakpoints)
+    for [subid, entry] in items(entries)
+      if entry['fname'] == fname
+        PlaceSign(id, subid, entry)
+      endif
+    endfor
+  endfor
+enddef
+
+# Handle a BufUnloaded autocommand event: unplace any signs.
+def BufUnloaded()
+  var fname = expand('<afile>:p')
+  for [id, entries] in items(breakpoints)
+    for [subid, entry] in items(entries)
+      if entry['fname'] == fname
+        entry['placed'] = 0
+      endif
+    endfor
+  endfor
+enddef
+
+InitHighlight()
+InitAutocmd()
+
+# TESTS
+g:termdebug_config = {}
+g:termdebug_config['command'] = "arm-none-eabi-gdb"
+g:termdebug_config['variables_window'] = 1
+g:termdebug_config['disasm_window'] = 1
+
+&cpo = keepcpo
+# unlet keepcpo
+
 #
 #
 # vim: sw=2 sts=2 et
