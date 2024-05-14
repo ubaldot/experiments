@@ -1084,8 +1084,8 @@ def InstallCommands()
     command Stop  SendCommand('-exec-interrupt')
     # using -exec-continue results in CTRL-C in the gdb window not working,
     # communicating via commbuf (= use of SendCommand) has the same result
-    # command Continue   SendCommand('-exec-continue')
-    command Continue  term_sendkeys(gdbbuf, "continue\r")
+    command Continue   SendCommand('-exec-continue')
+    # command Continue  term_sendkeys(gdbbuf, "continue\r")
   endif
 
   command -nargs=* Frame  Frame(<q-args>)
