@@ -143,9 +143,8 @@ set cpo&vim
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
-# UBA :Remove the !
-command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
-command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
+command -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
+command -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
 
 
 # Take a breakpoint number as used by GDB and turn it into an integer.
@@ -206,7 +205,7 @@ def StartDebug(bang: bool, ...gdb_args: list<string>)
   StartDebug_internal({'gdb_args': gdb_args, 'bang': bang})
 enddef
 
-def StartDebugCommand(bang: bool, ...args: list<string>) # TODO: check bang arg
+def StartDebugCommand(bang: bool, ...args: list<string>)
   # First argument is the command to debug, rest are run arguments.
   StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[1:], 'bang': bang})
 enddef
@@ -267,9 +266,6 @@ def StartDebug_internal(dict: dict<any>)
   else
     way = 'prompt'
   endif
-
-  # UBA
-  # way = 'prompt'
 
   if way == 'prompt'
     StartDebug_prompt(dict)
@@ -513,7 +509,6 @@ def StartDebug_prompt(dict: dict<any>)
   # UBA
   file gdb
   # file arm-none-eabi-gdb
-  # TODO
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
 
@@ -701,7 +696,6 @@ def PromptInterrupt()
 enddef
 
 # Function called when gdb outputs text.
-# UBA: Valid only in debug prompt?
 def GdbOutCallback(channel: any, text: string)
   ch_log('received from gdb: ' .. text)
 
@@ -764,8 +758,7 @@ def DecodeMessage(quotedText: string, literal: bool): string
         #\ multi-byte characters arrive in octal form
         #\ NULL-values must be kept encoded as those break the string otherwise
         \ ->substitute('\\000', NullRepl, 'g')
-        # UBA IMPORTANT! Why a lambda function as second argument of substitute? (The
-        # following is the original)
+        # UBA old lambda replaced with new lambda syntax
         \ ->substitute('\\\o\o\o',  => eval('"' .. submatch(0) .. '"'), 'g')
         # \ ->substitute('\\\o\o\o',  eval('"' .. submatch(0) .. '"'), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
@@ -854,7 +847,6 @@ def EndDebugCommon()
     exe ":" .. was_buf .. "buf"
   endif
 
-  # UBA
   DeleteCommands()
 
   win_gotoid(curwinid)
@@ -1014,8 +1006,6 @@ def CommOutput(chan: any, message: string)
   # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Output-Syntax.html#GDB_002fMI-Output-Syntax
 
 
-
-
   # UBA: for checking what the MI interface spits out
   # echom "message_orig: " .. message
 
@@ -1076,7 +1066,7 @@ enddef
 
 # Install commands in the current window to control the debugger.
 def InstallCommands()
-  #   # UBA :check. Do we need them in Vim9?
+  # UBA :check. Do we need them in Vim9?
   var save_cpo = &cpo
   set cpo&vim
 
