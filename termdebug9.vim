@@ -42,6 +42,11 @@ vim9script
 #   finish
 # endif
 
+# UBA:
+# set enc=utf-16
+# set ff=dos
+
+
 var way = 'terminal'
 var err = 'no errors'
 
@@ -1000,8 +1005,10 @@ enddef
 
 # Handle a message received from gdb on the GDB/MI interface.
 def CommOutput(chan: any, message: string)
+
+  echom "message_orig: " .. message
+
   var msgs = split(message, "\r")
-  echom "message: " .. message
 
   var msg = ''
   for received_msg in msgs
@@ -1009,7 +1016,12 @@ def CommOutput(chan: any, message: string)
     if msg[0] == "\n"
       msg = received_msg[1 : ]
     else
-      msg = received_msg[1 : ]
+      msg = received_msg
+    endif
+
+    if msg[0] == "\^@"
+      echom "prontooo"
+      msg = msg[1 : ]
     endif
 
     echom "msg: " .. msg
