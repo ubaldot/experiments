@@ -19,12 +19,10 @@ Proposed changes:
  10. Switch between 'embedded' or 'desktop'
  11. CommOut/DecodeMessage could be improved... see #10300 and comments in source code.
  12. Change if exists(':Termdebug') with if exists('g:termdebug_loaded')
+ 13. Maybe address some issues from GitHub?
 
 Notes:
   1. There are many 'any' type hints because I don't know what to put there.
   2. In the original script there were a number of unlet and I wrote some
      proposals on how to deal with them
-  3.  Do we still need the following in Vim9?
-      var save_cpo = &cpo
-      set cpo&vim
-  4. Different notes are searchable with /UBA.
+  4. Other questions are searchable with /UBA in the source code.
