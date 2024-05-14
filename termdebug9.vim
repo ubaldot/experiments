@@ -1006,25 +1006,24 @@ enddef
 # Handle a message received from gdb on the GDB/MI interface.
 def CommOutput(chan: any, message: string)
 
-  echom "message_orig: " .. message
+  # UBA: for checking what the MI interface spits out
+  # echom "message_orig: " .. message
 
   var msgs = split(message, "\r")
 
   var msg = ''
   for received_msg in msgs
     # remove prefixed NL
-    if msg[0] == "\n"
+    if received_msg[0] == "\n"
       msg = received_msg[1 : ]
     else
       msg = received_msg
     endif
 
-    if msg[0] == "\^@"
-      echom "prontooo"
+    # UBA: this is a very ugly hack to get rid of ^@ characters.
+    if msg[0] =~ '[^[:print:]]'
       msg = msg[1 : ]
     endif
-
-    echom "msg: " .. msg
 
     if parsing_disasm_msg
       HandleDisasmMsg(msg)
@@ -1040,7 +1039,6 @@ def CommOutput(chan: any, message: string)
       elseif msg =~ '^=thread-group-started'
         HandleProgramRun(msg)
       elseif msg =~ '^\^done,value='
-        echom "PLUTO"
         HandleEvaluate(msg)
       elseif msg =~ '^\^error,msg='
         HandleError(msg)
@@ -1067,7 +1065,7 @@ enddef
 
 # Install commands in the current window to control the debugger.
 def InstallCommands()
-  #   # UBA :check
+  #   # UBA :check. Do we need them in Vim9?
   var save_cpo = &cpo
   set cpo&vim
 
@@ -1104,6 +1102,7 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
+  # UBA: By default, we assume we have a map
   var map = 1
   if exists('g:termdebug_config')
     map = get(g:termdebug_config, 'map_K', 1)
@@ -1246,7 +1245,7 @@ def DeleteCommands()
     # Remove the WinBar entries from all windows where it was added.
     var curwinid = win_getid()
     # UBA
-    echom winbar_winids
+    # echom winbar_winids
     for winid in winbar_winids
       if win_gotoid(winid)
         aunmenu WinBar.Step
@@ -1503,7 +1502,7 @@ def HandleEvaluate(msg: string)
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
     # UBA
-    echom "evalFromBalloonExpr" .. evalFromBalloonExpr
+    # echom "evalFromBalloonExpr" .. evalFromBalloonExpr
   if evalFromBalloonExpr
     if evalFromBalloonExprResult == ''
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
@@ -1513,7 +1512,7 @@ def HandleEvaluate(msg: string)
     balloon_show(evalFromBalloonExprResult)
   else
     # UBA
-    echom "PIPPO"
+    # echom "PIPPO"
     echomsg '"' .. evalexpr .. '": ' .. value
   endif
 
@@ -1830,7 +1829,7 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
   var nr = ''
 
   # UBA
-  echom "I am inside:"
+  # echom "I am inside:"
   if msg !~ 'fullname='
     # a watch or a pending breakpoint does not have a file name
     if msg =~ 'pending='
