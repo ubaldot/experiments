@@ -758,7 +758,6 @@ def DecodeMessage(quotedText: string, literal: bool): string
         \ ->substitute('\\000', NullRepl, 'g')
         # UBA old lambda replaced with new lambda syntax
         \ ->substitute('\\\o\o\o',  => eval('"' .. submatch(0) .. '"'), 'g')
-        # \ ->substitute('\\\o\o\o',  eval('"' .. submatch(0) .. '"'), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
