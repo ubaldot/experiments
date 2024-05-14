@@ -1,17 +1,29 @@
-Feature changes:
+Proposed changes:
   1. gdb terminal/buffer name is the same of the gdb program used (e.g. gdb,
-     arm-none-eabi-gdb, mygdb, etc)
-  2. Added <Plug> for allowing mappings
-  3. Addes save win view at the beginning
+     arm-none-eabi-gdb, mygdb, etc) => Already implemented.
+  2. Added <Plug> for allowing mappings, I don't like that map_key thing that
+     is inplace now.
+  3. Add save win view at the beginning so user can restore view if he mess up
+     with the windows
+  4. Consider an Init() function to initialize the script-local variables so
+     every time :Termdebug is invoked all the script variables are cleaned
+  4. Select which windows to show and adjust their layout
+  5. Set "unlisted" the buffers that you don't actually need (like the
+     communication buffer)
+  6. Address some Issues like #14187,
+  7. IsGdbRunning() should return a bool rather than a string
+  8. I don't really like the double config with the dict g:termdebug_config
+     and single variables e.g. g:termdebugger
+  9. Adjust the prompt/terminal selection. Use 'terminal' by default and state
+     in the docs that if things don't work to use 'prompt'
+ 10. Switch between 'embedded' or 'desktop'
+ 11. CommOut/DecodeMessage could be improved... see #10300 and comments in source code.
 
 Notes:
-  1. There are many any types
-  2. In DecodeMessage() there was a lambda function inside substitute() but I
-     haven't understood what is for...
-  3. In the original script there were a number of unlet and I don't know how
-     to handle them in vim9
-  4.  Do we still need the following in Vim9?
+  1. There are many 'any' type hints because I don't know what to put there.
+  2. In the original script there were a number of unlet and I wrote some
+     proposals on how to deal with them
+  3.  Do we still need the following in Vim9?
       var save_cpo = &cpo
       set cpo&vim
-  5. When I declare a variable without defining it (e.g. var foo: string) does
-     foo takes value null_string?
+  4. Different notes are searchable with /UBA.

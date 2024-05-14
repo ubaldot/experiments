@@ -38,13 +38,18 @@ vim9script
 # https://sourceware.org/gdb/current/onlinedocs/gdb/GDB_002fMI.html
 
 # In case this gets sourced twice.
+# UBA
 # if exists(":Termdebug")
 #   finish
 # endif
 
-# UBA:
-# set enc=utf-16
-# set ff=dos
+# ==============FOR TESTS
+g:termdebug_config = {}
+# g:termdebug_config['command'] = "arm-none-eabi-gdb"
+g:termdebug_config['variables_window'] = 1
+g:termdebug_config['disasm_window'] = 1
+g:termdebug_config['use_prompt'] = 1
+# =========================
 
 
 var way = 'terminal'
@@ -1005,6 +1010,13 @@ enddef
 
 # Handle a message received from gdb on the GDB/MI interface.
 def CommOutput(chan: any, message: string)
+  # UBA: we may use the standard MI message formats? See #10300 that cites
+  # the following links:
+  # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Input-Syntax.html#GDB_002fMI-Input-Syntax
+  # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Output-Syntax.html#GDB_002fMI-Output-Syntax
+
+
+
 
   # UBA: for checking what the MI interface spits out
   # echom "message_orig: " .. message
@@ -1976,12 +1988,6 @@ enddef
 
 InitHighlight()
 InitAutocmd()
-
-# TESTS
-g:termdebug_config = {}
-# g:termdebug_config['command'] = "arm-none-eabi-gdb"
-g:termdebug_config['variables_window'] = 1
-g:termdebug_config['disasm_window'] = 1
 
 &cpo = keepcpo
 # unlet keepcpo
