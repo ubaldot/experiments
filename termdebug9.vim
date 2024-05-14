@@ -75,9 +75,7 @@ var promptbuf = 0
 var ptybuf = 0
 var commbuf = 0
 
-# var gdbjob: job
 var gdbjob = null_job
-# var gdb_channel: channel
 var gdb_channel = null_channel
 # These changes because they relate to windows
 var pid = 0
