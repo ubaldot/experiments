@@ -1009,7 +1009,12 @@ def CommOutput(chan: any, message: string)
   # UBA: for checking what the MI interface spits out
   # echom "message_orig: " .. message
 
-  var msgs = split(message, "\r")
+  # UBA: this change is due to ^M^@ line-breaks on WSL2. Not sure if it works
+  # on other platforms
+  # var msgs = split(message, "\r")
+  var msgs = split(message, '\r\%x0')
+
+  echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
@@ -1018,11 +1023,6 @@ def CommOutput(chan: any, message: string)
       msg = received_msg[1 : ]
     else
       msg = received_msg
-    endif
-
-    # UBA: this is a very ugly hack to get rid of ^@ characters.
-    if msg[0] =~ '[^[:print:]]'
-      msg = msg[1 : ]
     endif
 
     if parsing_disasm_msg
