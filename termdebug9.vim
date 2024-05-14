@@ -1014,7 +1014,8 @@ def CommOutput(chan: any, message: string)
   # var msgs = split(message, "\r")
   var msgs = split(message, '\r\%x0')
 
-  echom "msgs: " .. string(msgs)
+  # UBA: for debug
+  # echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
