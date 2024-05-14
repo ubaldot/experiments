@@ -184,8 +184,6 @@ enddef
 # Get the command to execute the debugger as a list, defaults to ["gdb"].
 def GetCommand(): list<string>
   var cmd = 'gdb'
-  # UBA
-  # cmd = 'arm-none-eabi-gdb'
   if exists('g:termdebug_config')
     cmd = get(g:termdebug_config, 'command', 'gdb')
   elseif exists('g:termdebugger')
@@ -273,7 +271,7 @@ def StartDebug_internal(dict: dict<any>)
     StartDebug_term(dict)
   endif
 
-  # TODO Add eventual other windows here
+  # UBA Add eventual other windows here
   if GetDisasmWindow()
     var curwinid = win_getid()
     GotoAsmwinOrCreateIt()
@@ -302,7 +300,7 @@ def CloseBuffers()
     exe 'bwipe! ' .. varbuf
   endif
   running = 0
-  # TODO: Check if this is OK
+  # UBA: Check if this is OK
   # unlet! gdbwin = 0
   # from vim9.txt use gdbwin = null but it does not work
   gdbwin = 0
@@ -390,7 +388,7 @@ def StartDebug_term(dict: dict<any>)
   echo "starting gdb with: " .. join(gdb_cmd)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
-  # TODO: for the other windows create first a split and then wincmd L. Resize
+  # UBA: for the other windows create first a split and then wincmd L. Resize
   # also a bit
   gdbbuf = term_start(gdb_cmd, {
         \ 'term_name': gdb_cmd[0],
@@ -412,7 +410,7 @@ def StartDebug_term(dict: dict<any>)
   while success == false && counter < counter_max
     if CheckGdbRunning() != 'ok'
       # Failure. If NOK just return.
-      # TODO: call CloseBuffers()?
+      # UBA: call CloseBuffers()?
       return
     endif
 
@@ -506,7 +504,7 @@ def StartDebug_prompt(dict: dict<any>)
   promptbuf = bufnr('')
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
-  # UBA
+  # UBA: perhaps here you need g:term_config['command'][0] or similar...
   file gdb
   # file arm-none-eabi-gdb
   prompt_setcallback(promptbuf, function('PromptCallback'))
@@ -696,7 +694,7 @@ def PromptInterrupt()
 enddef
 
 # Function called when gdb outputs text.
-def GdbOutCallback(channel: any, text: string)
+def GdbOutCallback(channel: channel, text: string)
   ch_log('received from gdb: ' .. text)
 
   # Disassembly messages need to be forwarded as-is.
@@ -952,7 +950,7 @@ def HandleDisasmMsg(msg: string)
 enddef
 
 
-def ParseVarinfo(varinfo: any): dict<any>
+def ParseVarinfo(varinfo: string): dict<any>
   var dict = {}
   var nameIdx = matchstrpos(varinfo, '{name="\([^"]*\)"')
   dict['name'] = varinfo[nameIdx[1] + 7 : nameIdx[2] - 2]
@@ -999,7 +997,7 @@ enddef
 
 
 # Handle a message received from gdb on the GDB/MI interface.
-def CommOutput(chan: any, message: string)
+def CommOutput(chan: channel, message: string)
   # UBA: we may use the standard MI message formats? See #10300 that cites
   # the following links:
   # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Input-Syntax.html#GDB_002fMI-Input-Syntax
@@ -1245,8 +1243,6 @@ def DeleteCommands()
   if has('menu')
     # Remove the WinBar entries from all windows where it was added.
     var curwinid = win_getid()
-    # UBA
-    # echom winbar_winids
     for winid in winbar_winids
       if win_gotoid(winid)
         aunmenu WinBar.Step
@@ -1279,7 +1275,6 @@ def DeleteCommands()
   breakpoint_locations = null_dict
 
   sign_undefine('debugPC')
-  # UBA
   sign_undefine(BreakpointSigns->map("'debugBreakpoint' .. v:val"))
   BreakpointSigns = []
 enddef
@@ -1430,8 +1425,7 @@ def SendEval(expr: string)
 enddef
 
 # :Evaluate - evaluate what is specified / under the cursor
-# UBA: Check range type!
-def Evaluate(range: any, arg: any)
+def Evaluate(range: number, arg: string)
   var expr = GetEvaluationExpression(range, arg)
   echom "expr:" .. expr
   ignoreEvalError = 0
@@ -1440,7 +1434,7 @@ enddef
 
 
 # get what is specified / under the cursor
-def GetEvaluationExpression(range: any, arg: string): string
+def GetEvaluationExpression(range: number, arg: string): string
   var expr = ''
   if arg != ''
     # user supplied evaluation
@@ -1502,8 +1496,6 @@ def HandleEvaluate(msg: string)
         #\ ->substitute('\\0x00', NullRep, 'g')
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
-    # UBA
-    # echom "evalFromBalloonExpr" .. evalFromBalloonExpr
   if evalFromBalloonExpr
     if evalFromBalloonExprResult == ''
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
@@ -1512,8 +1504,6 @@ def HandleEvaluate(msg: string)
     endif
     balloon_show(evalFromBalloonExprResult)
   else
-    # UBA
-    # echom "PIPPO"
     echomsg '"' .. evalexpr .. '": ' .. value
   endif
 
@@ -1829,8 +1819,6 @@ enddef
 def HandleNewBreakpoint(msg: string, modifiedFlag: any)
   var nr = ''
 
-  # UBA
-  # echom "I am inside:"
   if msg !~ 'fullname='
     # a watch or a pending breakpoint does not have a file name
     if msg =~ 'pending='
@@ -1914,7 +1902,7 @@ enddef
 # Handle deleting a breakpoint
 # Will remove the sign that shows the breakpoint
 def HandleBreakpointDelete(msg: string)
-  # UBA CHECK THIS
+  # UBA CHECK THIS: why +0 at the end? Is that a sort of ASCII conversion?
   # var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
   var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '')
   if empty(id)

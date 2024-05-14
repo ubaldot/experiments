@@ -18,6 +18,7 @@ Proposed changes:
      in the docs that if things don't work to use 'prompt'
  10. Switch between 'embedded' or 'desktop'
  11. CommOut/DecodeMessage could be improved... see #10300 and comments in source code.
+ 12. Change if exists(':Termdebug') with if exists('g:termdebug_loaded')
 
 Notes:
   1. There are many 'any' type hints because I don't know what to put there.
