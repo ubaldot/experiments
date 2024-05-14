@@ -901,6 +901,8 @@ endfunc
 
 " Handle a message received from gdb on the GDB/MI interface.
 func s:CommOutput(chan, msg)
+
+  echom "a:msg: " .. a:msg
   let msgs = split(a:msg, "\r")
 
   for msg in msgs
@@ -908,6 +910,8 @@ func s:CommOutput(chan, msg)
     if msg[0] == "\n"
       let msg = msg[1:]
     endif
+
+    echom "msg:" .. msg
 
     if s:parsing_disasm_msg
       call s:HandleDisasmMsg(msg)
@@ -1281,6 +1285,7 @@ func s:SendEval(expr)
   let expr = a:expr
   let expr = substitute(expr, '\\', '\\\\', 'g')
   let expr = substitute(expr, '"', '\\"', 'g')
+  echom "expr: " .. expr
   call s:SendCommand('-data-evaluate-expression "' . expr . '"')
   let s:evalexpr = exprLHS
 endfunc

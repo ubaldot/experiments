@@ -178,7 +178,7 @@ enddef
 def GetCommand(): list<string>
   var cmd = 'gdb'
   # UBA
-  cmd = 'arm-none-eabi-gdb'
+  # cmd = 'arm-none-eabi-gdb'
   if exists('g:termdebug_config')
     cmd = get(g:termdebug_config, 'command', 'gdb')
   elseif exists('g:termdebugger')
@@ -503,8 +503,8 @@ def StartDebug_prompt(dict: dict<any>)
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
   # UBA
-  # file gdb
-  file arm-none-eabi-gdb
+  file gdb
+  # file arm-none-eabi-gdb
   # TODO
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
@@ -758,7 +758,7 @@ def DecodeMessage(quotedText: string, literal: bool): string
         \ ->substitute('\\000', NullRepl, 'g')
         # UBA IMPORTANT! Why a lambda function as second argument of substitute? (The
         # following is the original)
-        \ ->substitute('\\\o\o\o',  => '"' .. submatch(0) .. '"', 'g')
+        \ ->substitute('\\\o\o\o',  => eval('"' .. submatch(0) .. '"'), 'g')
         # \ ->substitute('\\\o\o\o',  eval('"' .. submatch(0) .. '"'), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
@@ -1001,6 +1001,7 @@ enddef
 # Handle a message received from gdb on the GDB/MI interface.
 def CommOutput(chan: any, message: string)
   var msgs = split(message, "\r")
+  echom "message: " .. message
 
   var msg = ''
   for received_msg in msgs
@@ -1008,8 +1009,10 @@ def CommOutput(chan: any, message: string)
     if msg[0] == "\n"
       msg = received_msg[1 : ]
     else
-      msg = received_msg
+      msg = received_msg[1 : ]
     endif
+
+    echom "msg: " .. msg
 
     if parsing_disasm_msg
       HandleDisasmMsg(msg)
@@ -1025,6 +1028,7 @@ def CommOutput(chan: any, message: string)
       elseif msg =~ '^=thread-group-started'
         HandleProgramRun(msg)
       elseif msg =~ '^\^done,value='
+        echom "PLUTO"
         HandleEvaluate(msg)
       elseif msg =~ '^\^error,msg='
         HandleError(msg)
@@ -1417,6 +1421,7 @@ enddef
 # UBA: Check range type!
 def Evaluate(range: any, arg: any)
   var expr = GetEvaluationExpression(range, arg)
+  echom "expr:" .. expr
   ignoreEvalError = 0
   SendEval(expr)
 enddef
@@ -1478,13 +1483,15 @@ def HandleEvaluate(msg: string)
         #\ multi-byte characters arrive in octal form, replace everything but NULL values
         \ ->substitute('\\000', NullRepl, 'g')
         # \ ->substitute('\\\o\o\o', {-> eval('"' .. submatch(0) .. '"')}, 'g')
-        \ ->substitute('\\\o\o\o', => '"' .. submatch(0) .. '"', 'g')
+        \ ->substitute('\\\o\o\o', => eval('"' .. submatch(0) .. '"'), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
         #\ ->substitute('\\0x00', NullRep, 'g')
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
+    # UBA
+    echom "evalFromBalloonExpr" .. evalFromBalloonExpr
   if evalFromBalloonExpr
     if evalFromBalloonExprResult == ''
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
@@ -1493,6 +1500,8 @@ def HandleEvaluate(msg: string)
     endif
     balloon_show(evalFromBalloonExprResult)
   else
+    # UBA
+    echom "PIPPO"
     echomsg '"' .. evalexpr .. '": ' .. value
   endif
 
@@ -1958,7 +1967,7 @@ InitAutocmd()
 
 # TESTS
 g:termdebug_config = {}
-g:termdebug_config['command'] = "arm-none-eabi-gdb"
+# g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
 
