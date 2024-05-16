@@ -210,8 +210,8 @@ else
 endif
 
 # UBA I think this could be removed in Vim9
-var keepcpo = &cpo
-set cpo&vim
+# var keepcpo = &cpo
+# set cpo&vim
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
@@ -376,19 +376,15 @@ def CloseBuffers()
   gdbwin = 0
 enddef
 
-# IsGdbRunning(): bool may be a better name?
-def CheckGdbRunning(): string
-  var gdbproc = term_getjob(gdbbuf)
-  var gdbproc_status = 'unknwown'
-  if type(gdbproc) == v:t_job
-    gdbproc_status = job_status(gdbproc)
-  endif
-  if gdbproc == v:null || gdbproc_status !=# 'run'
+def IsGdbRunning(): bool
+  # UBA: check this implementation
+  var gdbproc_status = job_status(term_getjob(gdbbuf))
+  if gdbproc_status !=# 'run'
     Echoerr(string(GetCommand()[0]) .. ' exited unexpectedly')
     CloseBuffers()
-    return ''
+    return false
   endif
-  return 'ok'
+  return true
 enddef
 
 # Open a terminal window without a job, to run the debugged program in.
@@ -403,6 +399,10 @@ def StartDebug_term(dict: dict<any>)
   endif
   var pty = job_info(term_getjob(ptybuf))['tty_out']
   ptywin = win_getid()
+
+  setbufvar(ptybuf, '&buflisted', false)
+  setwinvar(ptywin, '&statusline', '%#StatusLine# %t(%n)%m%*' )
+
   if vvertical
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
@@ -424,8 +424,11 @@ def StartDebug_term(dict: dict<any>)
     exe 'bwipe! ' .. ptybuf
     return
   endif
+  setbufvar(commbuf, '&buflisted', false)
   var commpty = job_info(term_getjob(commbuf))['tty_out']
 
+
+  # Start the gdb buffer
   var gdb_args = get(dict, 'gdb_args', [])
   var proc_args = get(dict, 'proc_args', [])
 
@@ -464,8 +467,6 @@ def StartDebug_term(dict: dict<any>)
         \ 'term_name': gdb_cmd[0],
         \ 'term_finish': 'close',
         \ })
-  # UBA: buffer name is the same as the gdb command.
-  # \ 'term_name': 'gdb',
   if gdbbuf == 0
     Echoerr('Failed to open the gdb terminal window')
     CloseBuffers()
@@ -473,14 +474,16 @@ def StartDebug_term(dict: dict<any>)
   endif
   gdbwin = win_getid()
 
+  setbufvar(gdbbuf, '&buflisted', false)
+  setwinvar(gdbwin, '&statusline', '%#StatusLine# %t(%n)%m%*' )
+
   # Wait for the "startupdone" message before sending any commands.
   var counter = 0
   var counter_max = 300
   var success = false
   while success == false && counter < counter_max
-    if CheckGdbRunning() != 'ok'
-      # Failure. If NOK just return.
-      # UBA: call CloseBuffers()?
+    if IsGdbRunning() == false
+      CloseBuffers()
       return
     endif
 
@@ -517,7 +520,7 @@ def StartDebug_term(dict: dict<any>)
   counter_max = 300
   success = false
   while success == false && counter < counter_max
-    if CheckGdbRunning() != 'ok'
+    if IsGdbRunning() == false
       return
     endif
 
@@ -565,7 +568,7 @@ enddef
 
 # Open a window with a prompt buffer to run gdb in.
 def StartDebug_prompt(dict: dict<any>)
-  if vvertical
+  if vvertical == true
     vertical new
   else
     new
@@ -580,7 +583,7 @@ def StartDebug_prompt(dict: dict<any>)
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
 
-  if vvertical
+  if vvertical == true
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
     exe (&columns / 2 - 1) .. "wincmd |"
@@ -714,7 +717,7 @@ def TermDebugSendCommand(cmd: string)
     ch_sendraw(gdb_channel, cmd .. "\n")
   else
     var do_continue = 0
-    if !stopped
+    if stopped == false
       var do_continue = 1
       Stop
       sleep 10m
@@ -834,7 +837,7 @@ def DecodeMessage(quotedText: string, literal: bool): string
         #\ \ ->substitute('\\0x00', NullRepl, 'g')
         \ ->substitute('\\\\', '\', 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
-  if !literal
+  if literal == false
     return msg
           \ ->substitute('\\t', "\t", 'g')
           \ ->substitute('\\n', '', 'g')
@@ -875,7 +878,10 @@ def EndTermDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  exe 'bwipe! ' .. commbuf
+  if commbuf > 0 && bufexists(commbuf)
+    exe 'bwipe! ' .. commbuf
+  endif
+
   gdbwin = 0
   EndDebugCommon()
 enddef
@@ -883,13 +889,13 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if ptybuf > 0
+  if ptybuf > 0 && bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
-  if asmbuf > 0
+  if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if varbuf > 0
+  if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = false
@@ -944,7 +950,7 @@ def EndPromptDebug(job: any, status: any)
     exe 'bwipe! ' .. promptbuf
   endif
 
-  EndDebugCommon()
+  # EndDebugCommon()
   # UBA
   gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
@@ -1574,7 +1580,7 @@ def TermDebugBalloonExpr(): string
   if v:beval_winid != sourcewin
     return ''
   endif
-  if !stopped
+  if stopped == false
     # Only evaluate when stopped, otherwise setting a breakpoint using the
     # mouse triggers a balloon.
     return ''
@@ -1654,6 +1660,8 @@ def GotoAsmwinOrCreateIt()
     setlocal bufhidden=wipe
     setlocal signcolumn=no
     setlocal modifiable
+    setlocal statusline=%#StatusLine#\ %t(%n)%m%*
+    setlocal nobuflisted
 
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
@@ -1724,6 +1732,9 @@ def GotoVariableswinOrCreateIt()
     setlocal bufhidden=wipe
     setlocal signcolumn=no
     setlocal modifiable
+    setlocal statusline=%#StatusLine#\ %t(%n)%m%*
+    setlocal nobuflisted
+
 
     if varbuf > 0 && bufexists(varbuf)
       exe 'buffer' .. varbuf
@@ -2013,7 +2024,7 @@ enddef
 InitHighlight()
 InitAutocmd()
 
-&cpo = keepcpo
+# &cpo = keepcpo
 # unlet keepcpo
 
 #
