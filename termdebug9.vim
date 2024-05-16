@@ -1004,15 +1004,16 @@ def CommOutput(chan: channel, message: string)
 
 
   # UBA: for checking what the MI interface spits out
-  # echom "message_orig: " .. message
+  echom "message_orig: " .. message
 
-  # UBA: this change is due to ^M^@ line-breaks on WSL2. Not sure if it works
-  # on other platforms
   # var msgs = split(message, "\r")
-  var msgs = split(message, '\r\%x0')
+  # var msgs = split(message, '\r\%x0')
+  # UBA: the following shall fix the EOL for different platforms and shall
+  # handle the ^@ character as well.
+  var msgs = split(message, '\\v\\r?\\n\\x%0')
 
   # UBA: for debug
-  # echom "msgs: " .. string(msgs)
+  echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
