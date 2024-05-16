@@ -48,7 +48,7 @@ g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
-# g:termdebug_config['use_prompt'] = 1
+g:termdebug_config['use_prompt'] = 1
 # =========================
 
 
@@ -1004,16 +1004,19 @@ def CommOutput(chan: channel, message: string)
 
 
   # UBA: for checking what the MI interface spits out
-  echom "message_orig: " .. message
+  # echom "message_orig: " .. message
 
-  # var msgs = split(message, "\r")
+  # UBA: For some reasons, not it works
+  var msgs = split(message, "\r")
   # var msgs = split(message, '\r\%x0')
   # UBA: the following shall fix the EOL for different platforms and shall
   # handle the ^@ character as well.
-  var msgs = split(message, '\\v\\r?\\n\\x%0')
+  # var msg_tmp = substitute(message, '\\v\\r?\\n\\x%0?', '\t', 'g')
+  # var msgs = split(msg_tmp, '\t')
+  # var msgs = split(message, '\\v\\r?\\n\\x%0?')
 
   # UBA: for debug
-  echom "msgs: " .. string(msgs)
+  # echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
