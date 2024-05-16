@@ -37,11 +37,17 @@ vim9script
 # The communication with gdb uses GDB/MI.  See:
 # https://sourceware.org/gdb/current/onlinedocs/gdb/GDB_002fMI.html
 
-# In case this gets sourced twice.
-# UBA
-# if exists(":Termdebug")
-#   finish
-# endif
+
+if !has('vim9script') ||  v:version < 900
+    # Needs Vim version 9.0 and above
+    echo "You need at least Vim 9.0"
+    finish
+endif
+
+if exists('g:termdebug9_loaded')
+    finish
+endif
+g:termdebug9_loaded = true
 
 # ==============FOR TESTS
 g:termdebug_config = {}
@@ -50,6 +56,8 @@ g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
 # g:termdebug_config['use_prompt'] = 1
 # =========================
+
+# Script variables declaration
 
 var way: string
 var err: string
@@ -114,16 +122,11 @@ var vvertical: bool
 
 var winbar_winids: list<number>
 
-# UBA Check these variables
-var plus_map_saved: dict<any>
-var minus_map_saved: dict<any>
-var k_map_saved: dict<any>
 
 var existing_mappings: dict<any>
 var default_key_mapping: list<string>
 
 var saved_mousemodel: string
-
 
 
 def InitScriptVars()
@@ -223,10 +226,6 @@ else
   finish
 endif
 
-# UBA I think this could be removed in Vim9
-# var keepcpo = &cpo
-# set cpo&vim
-
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
 command -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
@@ -310,8 +309,6 @@ def StartDebug_internal(dict: dict<any>)
     doauto <nomodeline> User TermdebugStartPre
   endif
 
-  # UBA
-  # Add init function here
   InitScriptVars()
   #
   # Uncomment this line to write logging in "debuglog".
@@ -964,8 +961,6 @@ def EndPromptDebug(job: any, status: any)
     exe 'bwipe! ' .. promptbuf
   endif
 
-  # EndDebugCommon()
-  # UBA
   gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
 enddef
@@ -1150,9 +1145,6 @@ enddef
 
 # Install commands in the current window to control the debugger.
 def InstallCommands()
-  # UBA :check. Do we need them in Vim9?
-  # var save_cpo = &cpo
-  # set cpo&vim
 
   command -nargs=? Break  SetBreakpoint(<q-args>)
   command -nargs=? Tbreak  SetBreakpoint(<q-args>, true)
@@ -1195,7 +1187,7 @@ def InstallCommands()
         endif
     endfor
 
-    # UBA may be another map?
+    # UBA may be another kind of map?
     nnoremap <silent> B <cmd>Break<cr>
     nnoremap <silent> T <cmd>Tbreak<cr>
     nnoremap <silent> D <cmd>Clear<cr>
@@ -1960,7 +1952,6 @@ def HandleBreakpointDelete(msg: string)
         remove(entry, 'placed')
       endif
     endfor
-    # UBA:
     remove(breakpoints, id)
     echomsg 'Breakpoint ' .. id .. ' cleared.'
   endif
