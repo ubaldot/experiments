@@ -1,9 +1,9 @@
 # Termdebug9: how to test it
 
 Verify that you have both `gcc` and `gdb` installed.    
-Then do the following
+Then do the following:
 
-1. Download termdebug9.vim script
+1. Download `termdebug9.vim` script
 2. Run `source termdebug9.vim`
 3. Run `:Termdebug`
 
