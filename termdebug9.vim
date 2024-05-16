@@ -642,7 +642,7 @@ def TermDebugSendCommand(cmd: string)
   else
     var do_continue = 0
     if !stopped
-      var do_continue = 1
+      do_continue = 1
       Stop
       sleep 10m
     endif
