@@ -54,7 +54,7 @@ g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
-g:termdebug_config['use_prompt'] = 1
+# g:termdebug_config['use_prompt'] = true
 # =========================
 
 # Script variables declaration
@@ -332,9 +332,9 @@ def StartDebug_internal(dict: dict<any>)
   endif
 
   # Override using a terminal window by setting g:termdebug_use_prompt to 1.
-  var use_prompt = 0
+  var use_prompt = false
   if exists('g:termdebug_config')
-    use_prompt = get(g:termdebug_config, 'use_prompt', 0)
+    use_prompt = get(g:termdebug_config, 'use_prompt', false)
   elseif exists('g:termdebug_use_prompt')
     use_prompt = g:termdebug_use_prompt
   endif
