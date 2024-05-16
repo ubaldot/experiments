@@ -1377,13 +1377,13 @@ enddef
 # :Up - go count frames in the stack "higher"
 def Up(count: number)
   # the 'correct' one would be -stack-select-frame N, but we don't know N
-  SendCommand($'-interpreter-exec console "up {a:count}"')
+  SendCommand($'-interpreter-exec console "up {count}"')
 enddef
 
 # :Down - go count frames in the stack "below"
 def Down(count: number)
   # the 'correct' one would be -stack-select-frame N, but we don't know N
-  SendCommand($'-interpreter-exec console "down {a:count}"')
+  SendCommand($'-interpreter-exec console "down {count}"')
 enddef
 
 def SendEval(expr: string)
