@@ -300,9 +300,6 @@ def CloseBuffers()
     exe 'bwipe! ' .. varbuf
   endif
   running = 0
-  # UBA: Check if this is OK
-  # unlet! gdbwin = 0
-  # from vim9.txt use gdbwin = null but it does not work
   gdbwin = 0
 enddef
 
@@ -715,7 +712,6 @@ def GdbOutCallback(channel: channel, text: string)
     decoded_text = DecodeMessage(text[11 : ], false)
     if exists('evalexpr') && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
       # Silently drop evaluation errors.
-      # UBA: unlet evalexpr
       evalexpr = null_string
       return
     endif
@@ -807,7 +803,6 @@ def EndTermDebug(job: any, status: any)
   endif
 
   exe 'bwipe! ' .. commbuf
-  # unlet gdbwin
   gdbwin = 0
   EndDebugCommon()
 enddef
@@ -834,9 +829,7 @@ def EndDebugCommon()
       exe ":" .. bufnr .. "buf"
       if exists('b:save_signcolumn')
         &signcolumn = b:save_signcolumn
-        # UBA check
-        # unlet b:save_signcolumn
-        # b:save_signcolumn = null
+        unlet b:save_signcolumn
       endif
     endif
   endfor
@@ -880,7 +873,6 @@ def EndPromptDebug(job: any, status: any)
 
   EndDebugCommon()
   # UBA
-  # unlet gdbwin
   gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
 enddef
@@ -1214,8 +1206,6 @@ def DeleteCommands()
     elseif empty(k_map_saved)
       nunmap K
     endif
-    # UBA: unlet again
-    # unlet k_map_saved
     k_map_saved = {}
   endif
   if exists('plus_map_saved')
@@ -1225,8 +1215,6 @@ def DeleteCommands()
     elseif empty(plus_map_saved)
       nunmap +
     endif
-    # UBA: unlet again
-    # unlet plus_map_saved
     plus_map_saved = {}
   endif
   if exists('minus_map_saved')
@@ -1236,8 +1224,6 @@ def DeleteCommands()
     elseif empty(minus_map_saved)
       nunmap -
     endif
-    # UBA: unlet....
-    # unlet minus_map_saved
     minus_map_saved = {}
   endif
 
@@ -1269,9 +1255,6 @@ def DeleteCommands()
   endif
 
   sign_unplace('TermDebug')
-  # UDA: unlet
-  # unlet breakpoints
-  # unlet breakpoint_locations
   breakpoints = null_dict
   breakpoint_locations = null_dict
 
@@ -1341,13 +1324,8 @@ def ClearBreakpoint()
           sign_unplace('TermDebug',
                 \ {'id': Breakpoint2SignNumber(id, str2nr(subid))})
         endfor
-        # UBA
-        # Perhaps using remove() is better so we get rid of the keyword unlet
-        # in the script?
-        # remove(breakpoints, id)
-        # remove(breakpoint_locations[bploc], idx)
-        unlet breakpoints[id]
-        unlet breakpoint_locations[bploc][idx]
+        remove(breakpoints, id)
+        remove(breakpoint_locations[bploc], idx)
         nr = id
         break
       else
@@ -1357,9 +1335,7 @@ def ClearBreakpoint()
 
     if nr != 0
       if empty(breakpoint_locations[bploc])
-        # UBA What if we use the following:
-        # remove(breakpoint_locations, bploc)
-        unlet breakpoint_locations[bploc]
+        remove(breakpoint_locations, bploc)
       endif
       # UBA:
       # id has been replaced with nr. Is it correct?
@@ -1914,14 +1890,11 @@ def HandleBreakpointDelete(msg: string)
       if has_key(entry, 'placed')
         sign_unplace('TermDebug',
               \ {'id': Breakpoint2SignNumber(str2nr(id), str2nr(subid))})
-        # UBA:
         remove(entry, 'placed')
-        # unlet entry['placed']
       endif
     endfor
     # UBA:
     remove(breakpoints, id)
-    # unlet breakpoints[id]
     echomsg 'Breakpoint ' .. id .. ' cleared.'
   endif
 enddef
