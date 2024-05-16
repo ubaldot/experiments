@@ -193,11 +193,6 @@ def InitScriptVars()
 
   winbar_winids = []
 
-  plus_map_saved = {}
-  minus_map_saved = {}
-  k_map_saved = {}
-
-
   existing_mappings = {}
   default_key_mapping = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
 
