@@ -48,7 +48,7 @@ g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
-g:termdebug_config['use_prompt'] = 1
+# g:termdebug_config['use_prompt'] = 1
 # =========================
 
 
