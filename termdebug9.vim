@@ -54,7 +54,7 @@ g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
-# g:termdebug_config['use_prompt'] = 1
+g:termdebug_config['use_prompt'] = 1
 # =========================
 
 # Script variables declaration
@@ -956,6 +956,7 @@ def EndPromptDebug(job: any, status: any)
     exe 'bwipe! ' .. promptbuf
   endif
 
+  EndDebugCommon()
   gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
 enddef
