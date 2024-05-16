@@ -113,11 +113,16 @@ var allleft: bool
 # This was s:vertical but I cannot use vertical as variable name
 var vvertical: bool
 
-# UBA Check these variables
 var winbar_winids: list<number>
+
+# UBA Check these variables
 var plus_map_saved: dict<any>
 var minus_map_saved: dict<any>
 var k_map_saved: dict<any>
+
+var existing_mappings: dict<any>
+var default_key_mapping: list<string>
+
 var saved_mousemodel: string
 
 
@@ -185,9 +190,15 @@ def InitScriptVars()
   vvertical = false
 
   winbar_winids = []
+
   plus_map_saved = {}
   minus_map_saved = {}
   k_map_saved = {}
+
+
+  existing_mappings = {}
+  default_key_mapping = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T']
+
   saved_mousemodel = &mousemodel
 enddef
 
@@ -718,7 +729,7 @@ def TermDebugSendCommand(cmd: string)
   else
     var do_continue = 0
     if stopped == false
-      var do_continue = 1
+      do_continue = 1
       Stop
       sleep 10m
     endif
@@ -1136,8 +1147,8 @@ enddef
 # Install commands in the current window to control the debugger.
 def InstallCommands()
   # UBA :check. Do we need them in Vim9?
-  var save_cpo = &cpo
-  set cpo&vim
+  # var save_cpo = &cpo
+  # set cpo&vim
 
   command -nargs=? Break  SetBreakpoint(<q-args>)
   command -nargs=? Tbreak  SetBreakpoint(<q-args>, true)
@@ -1172,42 +1183,87 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
+
+  # UBA: Mappings
+  noremap <unique> <script> <Plug>Break <cmd>Break
+  noremap <unique> <script> <Plug>TBreak <cmd>TBreak
+  noremap <unique> <script> <Plug>Clear <cmd>Clear
+  noremap <unique> <script> <Plug>Continue <cmd>Continue
+  noremap <unique> <script> <Plug>Step <cmd>Step
+  noremap <unique> <script> <Plug>Over <cmd>Over
+  noremap <unique> <script> <Plug>Until <cmd>Until
+  noremap <unique> <script> <Plug>Finish <cmd>Finish
+  noremap <unique> <script> <Plug>Run <cmd>Run
+  noremap <unique> <script> <Plug>Stop <cmd>Stop
+
+  noremap <unique> <script> <Plug>Frame <cmd>Frame
+  noremap <unique> <script> <Plug>Up <cmd>Up
+  noremap <unique> <script> <Plug>Down <cmd>Down
+
+  noremap <unique> <script> <Plug>Evaluate <cmd>Evaluate<cr>
+
+  var use_default_mapping = true
+  if use_default_mapping
+    # Save possibly existing mappings
+    for key in default_key_mapping
+        if !empty(mapcheck(key, "n"))
+            existing_mappings[key] = maparg(key, 'n')
+        endif
+    endfor
+
+    # UBA may be nnoremap. Missing UP and DOWN
+    nmap <silent> C <Plug>Continue<cr>
+    nmap <silent> B <Plug>Break<cr>
+    nmap <silent> D <Plug>Clear<cr>
+    nmap <silent> I <Plug>Step<cr>
+    nmap <silent> O <Plug>Next<cr>
+    nmap <silent> F <Plug>Finish<cr>
+    nmap <silent> S <Plug>Stop<cr>
+    nmap <silent> U <Plug>Until<cr>
+    nmap <silent> T <Plug>Tbreak<cr>
+    nmap <silent> K <Plug>Evaluate
+    nmap <silent> R <Plug>Run<cr>
+    # UBA: does not work
+    nmap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
+
+  endif
+
   # UBA: By default, we assume we have a map
-  var map = 1
-  if exists('g:termdebug_config')
-    map = get(g:termdebug_config, 'map_K', 1)
-  elseif exists('g:termdebug_map_K')
-    map = g:termdebug_map_K
-  endif
+  # var map = 1
+  # if exists('g:termdebug_config')
+  #   map = get(g:termdebug_config, 'map_K', 1)
+  # elseif exists('g:termdebug_map_K')
+  #   map = g:termdebug_map_K
+  # endif
 
-  if map
-    k_map_saved = maparg('K', 'n', 0, 1)
-    if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
-      nnoremap K :Evaluate<CR>
-    endif
-  endif
+  # if map
+  #   k_map_saved = maparg('K', 'n', 0, 1)
+  #   if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
+  #     nnoremap K :Evaluate<CR>
+  #   endif
+  # endif
 
-  map = 1
-  if exists('g:termdebug_config')
-    map = get(g:termdebug_config, 'map_plus', 1)
-  endif
-  if map
-    plus_map_saved = maparg('+', 'n', 0, 1)
-    if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
-      nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-    endif
-  endif
+  # map = 1
+  # if exists('g:termdebug_config')
+  #   map = get(g:termdebug_config, 'map_plus', 1)
+  # endif
+  # if map
+  #   plus_map_saved = maparg('+', 'n', 0, 1)
+  #   if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
+  #     nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+  #   endif
+  # endif
 
-  map = 1
-  if exists('g:termdebug_config')
-    map = get(g:termdebug_config, 'map_minus', 1)
-  endif
-  if map
-    minus_map_saved = maparg('-', 'n', 0, 1)
-    if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
-      nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
-    endif
-  endif
+  # map = 1
+  # if exists('g:termdebug_config')
+  #   map = get(g:termdebug_config, 'map_minus', 1)
+  # endif
+  # if map
+  #   minus_map_saved = maparg('-', 'n', 0, 1)
+  #   if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
+  #     nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+  #   endif
+  # endif
 
 
   if has('menu') && &mouse != ''
@@ -1232,7 +1288,7 @@ def InstallCommands()
     endif
   endif
 
-  &cpo = save_cpo
+  # &cpo = save_cpo
 enddef
 
 # Install the window toolbar in the current window.
@@ -1278,33 +1334,14 @@ def DeleteCommands()
   delcommand Var
   delcommand Winbar
 
-  if exists('k_map_saved')
-    if !empty(k_map_saved) && !k_map_saved.buffer
-      nunmap K
-      mapset(k_map_saved)
-    elseif empty(k_map_saved)
-      nunmap K
-    endif
-    k_map_saved = {}
-  endif
-  if exists('plus_map_saved')
-    if !empty(plus_map_saved) && !plus_map_saved.buffer
-      nunmap +
-      mapset(plus_map_saved)
-    elseif empty(plus_map_saved)
-      nunmap +
-    endif
-    plus_map_saved = {}
-  endif
-  if exists('minus_map_saved')
-    if !empty(minus_map_saved) && !minus_map_saved.buffer
-      nunmap -
-      mapset(minus_map_saved)
-    elseif empty(minus_map_saved)
-      nunmap -
-    endif
-    minus_map_saved = {}
-  endif
+
+  # Restore mappings
+  for key in default_key_mapping
+      exe "nunmap " .. key
+      if has_key(existing_mappings, key)
+          exe "nnoremap " .. key .. " " .. existing_mappings[key]
+      endif
+  endfor
 
   if has('menu')
     # Remove the WinBar entries from all windows where it was added.
