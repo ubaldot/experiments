@@ -1004,19 +1004,17 @@ def CommOutput(chan: channel, message: string)
 
 
   # UBA: for checking what the MI interface spits out
-  echom "message_orig: " .. message
+  # echom "message_orig: " .. message
 
   # UBA: For some reasons, now it works
   var msgs = split(message, "\r")
-  # var msgs = split(message, '\r\%x0')
-  # UBA: the following shall fix the EOL for different platforms and shall
-  # handle the ^@ character as well.
-  # var msg_tmp = substitute(message, '\\v\\r?\\n\\x%0?', '\t', 'g')
-  # var msgs = split(msg_tmp, '\t')
-  # var msgs = split(message, '\\v\\r?\\n\\x%0?')
 
-  # UBA: for debug
-  echom "msgs: " .. string(msgs)
+  # UBA: attempts to remove the ^@ (null char)
+  # var msgs = split(message, '\r\%x0')
+  # UBA: the EOL for different platforms shall be tested
+
+  # UBA: for checking how the lines are split
+  # echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
