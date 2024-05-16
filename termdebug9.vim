@@ -259,7 +259,7 @@ def StartDebug_internal(dict: dict<any>)
   elseif exists('g:termdebug_use_prompt')
     use_prompt = g:termdebug_use_prompt
   endif
-  if has('terminal') && !has('win32') && !use_prompt
+  if !use_prompt && has('terminal') && !has('win32')
     way = 'terminal'
   else
     way = 'prompt'
