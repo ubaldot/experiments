@@ -4,7 +4,7 @@
 
 1. `AS-IS` is the porting "as-is" from legacy vim script to vim9
 2. `main` is the main branch
-3. `1-proposed changed` is the branch implements the changes described in the
+3. `1-proposed changes` is the branch implements the changes described in the
    issu #1 in the issue tracker on the vim9 "as-is" porting.
 
 # How to test it
@@ -23,4 +23,4 @@ and do ordinary debug activities (add breakpoints, step, continue, etc).
 
 For more info `:h Termdebug`.
 
-To see the changes, check the README.md in the `1-proposed changed` branch and/or check issue #1.
+To see the changes, check the README.md in the `1-proposed changes` branch and/or check issue #1.
