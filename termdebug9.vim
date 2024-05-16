@@ -54,7 +54,7 @@ g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
-# g:termdebug_config['use_prompt'] = 1
+g:termdebug_config['use_prompt'] = 1
 # =========================
 
 # Script variables declaration
@@ -338,7 +338,7 @@ def StartDebug_internal(dict: dict<any>)
   elseif exists('g:termdebug_use_prompt')
     use_prompt = g:termdebug_use_prompt
   endif
-  if has('terminal') && !has('win32') && !use_prompt
+  if !use_prompt && has('terminal') && !has('win32')
     way = 'terminal'
   else
     way = 'prompt'
@@ -956,6 +956,7 @@ def EndPromptDebug(job: any, status: any)
     exe 'bwipe! ' .. promptbuf
   endif
 
+  EndDebugCommon()
   gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
 enddef
