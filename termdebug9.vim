@@ -51,39 +51,38 @@ g:termdebug_config['disasm_window'] = 1
 # g:termdebug_config['use_prompt'] = 1
 # =========================
 
+var way: string
+var err: string
 
-var way = 'terminal'
-var err = 'no errors'
+var pc_id: number
+var asm_id: number
+var break_id: number
+var stopped: bool
+var running: bool
 
-var pc_id = 12
-var asm_id = 13
-var break_id = 14  # breakpoint number is added to this
-var stopped = 1
-var running = 0
-
-var parsing_disasm_msg = 0
-var asm_lines = []
-var asm_addr = ''
+var parsing_disasm_msg: number
+var asm_lines: list<string>
+var asm_addr: string
 
 # These shall be constants but cannot be initialized here
 # They indicate the buffer numbers of the main buffers used
-var gdbbuf = 0
-var varbuf = 0
-var asmbuf = 0
-var promptbuf = 0
+var gdbbuf: number
+var varbuf: number
+var asmbuf: number
+var promptbuf: number
 # This is for the "debugged program" thing
-var ptybuf = 0
-var commbuf = 0
+var ptybuf: number
+var commbuf: number
 
-var gdbjob = null_job
-var gdb_channel = null_channel
+var gdbjob: job
+var gdb_channel: channel
 # These changes because they relate to windows
-var pid = 0
-var gdbwin = 0
-var varwin = 0
-var asmwin = 0
-var ptywin = 0
-var sourcewin = 0
+var pid: number
+var gdbwin: number
+var varwin: number
+var asmwin: number
+var ptywin: number
+var sourcewin: number
 
 # Contains breakpoints that have been placed, key is a string with the GDB
 # breakpoint number.
@@ -92,32 +91,105 @@ var sourcewin = 0
 # For a breakpoint "123.4" the id is "123" and subid is "4".
 # Example, when breakpoint "44", "123", "123.1" and "123.2" exist:
 # {'44': {'0': entry}, '123': {'0': entry, '1': entry, '2': entry}}
-var breakpoints = {}
+var breakpoints: dict<any>
 
 # Contains breakpoints by file/lnum.  The key is "fname:lnum".
 # Each entry is a list of breakpoint IDs at that position.
-var breakpoint_locations = {}
-var BreakpointSigns: list<string> = []
+var breakpoint_locations: dict<any>
+var BreakpointSigns: list<string>
 
 
-var evalFromBalloonExpr = 0
-var evalFromBalloonExprResult = ''
-var ignoreEvalError = 0
-var evalexpr = ''
+# UBA bool?
+var evalFromBalloonExpr: bool
+var evalFromBalloonExprResult: string
+var ignoreEvalError: bool
+var evalexpr: string
 # Remember the old value of 'signcolumn' for each buffer that it's set in, so
 # that we can restore the value for all buffers.
-var signcolumn_buflist = [bufnr()]
-var save_columns = 0
+var signcolumn_buflist: list<number>
+var save_columns: number
 
-var allleft = 0
+var allleft: bool
 # This was s:vertical but I cannot use vertical as variable name
-var vvertical = 0
+var vvertical: bool
 
-var winbar_winids = []
-var plus_map_saved = {}
-var minus_map_saved = {}
-var k_map_saved = {}
-var saved_mousemodel = ''
+# UBA Check these variables
+var winbar_winids: list<number>
+var plus_map_saved: dict<any>
+var minus_map_saved: dict<any>
+var k_map_saved: dict<any>
+var saved_mousemodel: string
+
+
+
+def InitScriptVars()
+  way = 'terminal'
+  err = 'no errors'
+
+  pc_id = 12
+  asm_id = 13
+  break_id = 14  # breakpoint number is added to this
+  stopped = true
+  running = false
+
+  parsing_disasm_msg = 0
+  asm_lines = []
+  asm_addr = ''
+
+# These shall be constants but cannot be initialized here
+# They indicate the buffer numbers of the main buffers used
+  gdbbuf = 0
+  varbuf = 0
+  asmbuf = 0
+  promptbuf = 0
+# This is for the "debugged program" thing
+  ptybuf = 0
+  commbuf = 0
+
+  gdbjob = null_job
+  gdb_channel = null_channel
+# These changes because they relate to windows
+  pid = 0
+  gdbwin = 0
+  varwin = 0
+  asmwin = 0
+  ptywin = 0
+  sourcewin = 0
+
+# Contains breakpoints that have been placed, key is a string with the GDB
+# breakpoint number.
+# Each entry is a dict, containing the sub-breakpoints.  Key is the subid.
+# For a breakpoint that is just a number the subid is zero.
+# For a breakpoint "123.4" the id is "123" and subid is "4".
+# Example, when breakpoint "44", "123", "123.1" and "123.2" exist:
+# {'44': {'0': entry}, '123': {'0': entry, '1': entry, '2': entry}}
+  breakpoints = {}
+
+# Contains breakpoints by file/lnum.  The key is "fname:lnum".
+# Each entry is a list of breakpoint IDs at that position.
+  breakpoint_locations = {}
+  BreakpointSigns = []
+
+
+  evalFromBalloonExpr = false
+  evalFromBalloonExprResult = ''
+  ignoreEvalError = false
+  evalexpr = ''
+# Remember the old value of 'signcolumn' for each buffer that it's set in, so
+# that we can restore the value for all buffers.
+  signcolumn_buflist = [bufnr()]
+  save_columns = 0
+
+  allleft = false
+# This was s:vertical but I cannot use vertical as variable name
+  vvertical = false
+
+  winbar_winids = []
+  plus_map_saved = {}
+  minus_map_saved = {}
+  k_map_saved = {}
+  saved_mousemodel = &mousemodel
+enddef
 
 
 # Need either the +terminal feature or +channel and the prompt buffer.
@@ -226,6 +298,7 @@ def StartDebug_internal(dict: dict<any>)
 
   # UBA
   # Add init function here
+  InitScriptVars()
   #
   # Uncomment this line to write logging in "debuglog".
   # call ch_logfile('debuglog', 'w')
@@ -245,11 +318,11 @@ def StartDebug_internal(dict: dict<any>)
       &columns = wide
       # If we make the Vim window wider, use the whole left half for the debug
       # windows.
-      allleft = 1
+      allleft = true
     endif
-    vvertical = 1
+    vvertical = true
   else
-    vvertical = 0
+    vvertical = false
   endif
 
   # Override using a terminal window by setting g:termdebug_use_prompt to 1.
@@ -299,7 +372,7 @@ def CloseBuffers()
   if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
-  running = 0
+  running = false
   gdbwin = 0
 enddef
 
@@ -660,7 +733,7 @@ enddef
 def SendResumingCommand(cmd: string)
   if stopped
     # reset stopped here, it may take a bit of time before we get a response
-    stopped = 0
+    stopped = false
     ch_log('assume that program is running after this command')
     SendCommand(cmd)
   else
@@ -819,7 +892,7 @@ def EndDebugCommon()
   if varbuf > 0
     exe 'bwipe! ' .. varbuf
   endif
-  running = 0
+  running = false
 
   # Restore 'signcolumn' in all buffers for which it was set.
   win_gotoid(sourcewin)
@@ -1143,7 +1216,8 @@ def InstallCommands()
     endif
 
     if popup
-      saved_mousemodel = &mousemodel
+      # UBA
+      # saved_mousemodel = &mousemodel
       &mousemodel = 'popup_setpos'
       an 1.200 PopUp.-SEP3-	<Nop>
       an 1.210 PopUp.Set\ breakpoint	:Break<CR>
@@ -1269,7 +1343,7 @@ def Until(at: string)
 
   if stopped
     # reset stopped here, it may take a bit of time before we get a response
-    stopped = 0
+    stopped = false
     ch_log('assume that program is running after this command')
 
     # Use the fname:lnum format
@@ -1405,7 +1479,7 @@ enddef
 def Evaluate(range: number, arg: string)
   var expr = GetEvaluationExpression(range, arg)
   echom "expr:" .. expr
-  ignoreEvalError = 0
+  ignoreEvalError = false
   SendEval(expr)
 enddef
 
@@ -1486,10 +1560,10 @@ def HandleEvaluate(msg: string)
 
   if evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
     # Looks like a pointer, also display what it points to.
-    ignoreEvalError = 1
+    ignoreEvalError = true
     SendEval('*' .. evalexpr)
   else
-    evalFromBalloonExpr = 0
+    evalFromBalloonExpr = false
   endif
 enddef
 
@@ -1505,9 +1579,9 @@ def TermDebugBalloonExpr(): string
     # mouse triggers a balloon.
     return ''
   endif
-  evalFromBalloonExpr = 1
+  evalFromBalloonExpr = true
   evalFromBalloonExprResult = ''
-  ignoreEvalError = 1
+  ignoreEvalError = true
   var expr = CleanupExpr(v:beval_text)
   SendEval(expr)
   return ''
@@ -1517,8 +1591,8 @@ enddef
 def HandleError(msg: string)
   if ignoreEvalError
     # Result of SendEval() failed, ignore.
-    ignoreEvalError = 0
-    evalFromBalloonExpr = 0
+    ignoreEvalError = false
+    evalFromBalloonExpr = true
     return
   endif
   var msgVal = substitute(msg, '.*msg="\(.*\)"', '\1', '')
@@ -1677,12 +1751,12 @@ def HandleCursor(msg: string)
     ch_log('program stopped')
     stopped = 1
     if msg =~ '^\*stopped,reason="exited-normally"'
-      running = 0
+      running = false
     endif
   elseif msg =~ '^\*running'
     ch_log('program running')
-    stopped = 0
-    running = 1
+    stopped = false
+    running = true
   endif
 
   var fname = ''
