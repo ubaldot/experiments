@@ -44,16 +44,17 @@ if !has('vim9script') ||  v:version < 900
     finish
 endif
 
-if exists('g:termdebug9_loaded')
-    finish
-endif
-g:termdebug9_loaded = true
+# if exists('g:termdebug9_loaded')
+#     finish
+# endif
+# g:termdebug9_loaded = true
 
 # ==============FOR TESTS
 g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
+g:termdebug_config['timeout'] = 500
 # g:termdebug_config['use_prompt'] = true
 # =========================
 
@@ -485,7 +486,13 @@ def StartDebug_term(dict: dict<any>)
 
   # Wait for the "startupdone" message before sending any commands.
   var counter = 0
+
   var counter_max = 300
+  if exists('g:termdebug_config') && has_key(g:termdebug_config, 'timeout')
+    counter_max = g:termdebug_config['timeout']
+  endif
+
+
   var success = false
   while success == false && counter < counter_max
     if IsGdbRunning() == false
@@ -523,7 +530,6 @@ def StartDebug_term(dict: dict<any>)
   # Wait for the response to show up, users may not notice the error and wonder
   # why the debugger doesn't work.
   counter = 0
-  counter_max = 300
   success = false
   while success == false && counter < counter_max
     if IsGdbRunning() == false
@@ -583,8 +589,14 @@ def StartDebug_prompt(dict: dict<any>)
   promptbuf = bufnr('')
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
+  var gdb_cmd = GetCommand()
   # UBA: perhaps here you need g:term_config['command'][0] or similar...
-  file gdb
+  # var gdb_name = GetCommand()[0]
+  if empty(glob(gdb_cmd[0]))
+    exe "file " .. gdb_cmd[0]
+  else
+    file Termdebug-gdb-console
+  endif
   # file arm-none-eabi-gdb
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
@@ -598,7 +610,6 @@ def StartDebug_prompt(dict: dict<any>)
   var gdb_args = get(dict, 'gdb_args', [])
   var proc_args = get(dict, 'proc_args', [])
 
-  var gdb_cmd = GetCommand()
   # Add -quiet to avoid the intro message causing a hit-enter prompt.
   gdb_cmd += ['-quiet']
   # Disable pagination, it causes everything to stop at the gdb, needs to be run early
