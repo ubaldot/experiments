@@ -77,8 +77,11 @@ var asm_addr: string
 # These shall be constants but cannot be initialized here
 # They indicate the buffer numbers of the main buffers used
 var gdbbuf: number
+var gdbbufname: string
 var varbuf: number
+var varbufname: string
 var asmbuf: number
+var asmbufname: string
 var promptbuf: number
 # This is for the "debugged program" thing
 var ptybuf: number
@@ -148,8 +151,11 @@ def InitScriptVars()
 # These shall be constants but cannot be initialized here
 # They indicate the buffer numbers of the main buffers used
   gdbbuf = 0
+  gdbbufname = 'Termdebug-gdb-console'
   varbuf = 0
+  varbufname = 'Termdebug-variables-listing'
   asmbuf = 0
+  asmbufname = 'Termdebug-asm-listing'
   promptbuf = 0
 # This is for the "debugged program" thing
   ptybuf = 0
@@ -442,6 +448,10 @@ def StartDebug_term(dict: dict<any>)
 
   var gdb_cmd = GetCommand()
 
+  if empty(glob(gdb_cmd[0]))
+    gdbbufname = gdb_cmd[0]
+  endif
+
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'command_add_args')
     gdb_cmd = g:termdebug_config.command_add_args(gdb_cmd, pty)
   else
@@ -472,7 +482,7 @@ def StartDebug_term(dict: dict<any>)
   # UBA: for the other windows create first a split and then wincmd L. Resize
   # also a bit
   gdbbuf = term_start(gdb_cmd, {
-        \ 'term_name': gdb_cmd[0],
+        \ 'term_name': gdbbufname,
         \ 'term_finish': 'close',
         \ })
   if gdbbuf == 0
@@ -592,12 +602,11 @@ def StartDebug_prompt(dict: dict<any>)
   set buftype=prompt
   var gdb_cmd = GetCommand()
   # UBA: perhaps here you need g:term_config['command'][0] or similar...
-  # var gdb_name = GetCommand()[0]
+  # Overwrite gdbbufname, if you can
   if empty(glob(gdb_cmd[0]))
-    exe "file " .. gdb_cmd[0]
-  else
-    file Termdebug-gdb-console
+    gdbbufname = gdb_cmd[0]
   endif
+  exe "file " .. gdbbufname
   # file arm-none-eabi-gdb
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
@@ -605,7 +614,7 @@ def StartDebug_prompt(dict: dict<any>)
   if vvertical == true
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
-    exe (&columns / 2 - 1) .. "wincmd |"
+    exe ":" .. (&columns / 2 - 1) .. "wincmd |"
   endif
 
   var gdb_args = get(dict, 'gdb_args', [])
@@ -1645,11 +1654,17 @@ def GotoAsmwinOrCreateIt()
     setlocal statusline=%#StatusLine#\ %t(%n)%m%*
     setlocal nobuflisted
 
+    # A nicer name for the buffer
+    var nice_name = 'Asm'
+
+    # If exists, then open, otherwise create (but check if there is no
+    # file/directory with the same name as nice_name)
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
-    else
-      silent file Termdebug-asm-listing
-      asmbuf = bufnr('Termdebug-asm-listing')
+    elseif empty(glob(nice_name))
+      asmbufname = nice_name
+      exe "silent file " .. asmbufname
+      asmbuf = bufnr(asmbufname)
     endif
 
     if mdf != 'vert' && GetDisasmWindowHeight() > 0
@@ -1717,12 +1732,17 @@ def GotoVariableswinOrCreateIt()
     setlocal statusline=%#StatusLine#\ %t(%n)%m%*
     setlocal nobuflisted
 
+    # A nicer name for the buffer
+    var nice_name = 'Variables'
 
+    # If exists, then open, otherwise create (but check if there is no
+    # file/directory with the same name as nice_name)
     if varbuf > 0 && bufexists(varbuf)
       exe 'buffer' .. varbuf
-    else
-      silent file Termdebug-variables-listing
-      varbuf = bufnr('Termdebug-variables-listing')
+    elseif empty(glob(nice_name))
+      varbufname = nice_name
+      exe "silent file " .. varbufname
+      varbuf = bufnr(varbufname)
     endif
 
     if mdf != 'vert' && GetVariablesWindowHeight() > 0
@@ -1783,7 +1803,7 @@ def HandleCursor(msg: string)
     endif
   endif
 
-  if running && stopped && bufwinnr('Termdebug-variables-listing') != -1
+  if running && stopped && bufwinnr(varbufname) != -1
     SendCommand('-stack-list-variables 2')
   endif
 
