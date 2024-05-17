@@ -55,6 +55,7 @@ g:termdebug_config = {}
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
 g:termdebug_config['timeout'] = 500
+g:termdebug_config['wide'] = 50
 # g:termdebug_config['use_prompt'] = true
 # =========================
 
@@ -413,7 +414,7 @@ def StartDebug_term(dict: dict<any>)
   if vvertical
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
-    exe (&columns / 2 - 1) .. "wincmd |"
+    exe ":" .. (&columns / 2 - 1) .. "wincmd |"
     if allleft
       # use the whole left column
       wincmd H
