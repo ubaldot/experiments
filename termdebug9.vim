@@ -1737,6 +1737,11 @@ enddef
 # Handle stopping and running message from gdb.
 # Will update the sign that shows the current position.
 def HandleCursor(msg: string)
+  if exists('#User#TermdebugCursor')
+    doauto <nomodeline> User TermdebugCursor
+  endif
+
+
   var wid = win_getid()
 
   if msg =~ '^\*stopped'
