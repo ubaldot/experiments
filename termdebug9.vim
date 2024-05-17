@@ -510,7 +510,7 @@ def StartDebug_prompt(dict: dict<any>)
   if vvertical
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
-    exe (&columns / 2 - 1) .. "wincmd |"
+    exe ":" .. (&columns / 2 - 1) .. "wincmd |"
   endif
 
   var gdb_args = get(dict, 'gdb_args', [])
