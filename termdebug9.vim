@@ -1993,8 +1993,6 @@ enddef
 InitHighlight()
 InitAutocmd()
 
-# &cpo = keepcpo
-# unlet keepcpo
 
 #
 #
