@@ -1,15 +1,9 @@
-# Termdebug9
+# Termdebug9: how to test it
 
-## OBS! There are three branches
+=======
 
-1. `AS-IS` is the porting "as-is" from legacy vim script to vim9
-2. `main` is the main branch
-3. `1-proposed changes` is the branch implements the changes described in the
-   issu #1 in the issue tracker on the vim9 "as-is" porting.
-
-# How to test it
-
-Verify that you have both `gcc` and `gdb` installed. Then do the following:
+> > > > > > > 15023bf (Fixed default mappings) Verify that you have both `gcc`
+> > > > > > > and `gdb` installed. Then do the following:
 
 1. Download `termdebug9.vim` script
 2. Run `:source termdebug9.vim`
@@ -23,4 +17,17 @@ and do ordinary debug activities (add breakpoints, step, continue, etc).
 
 For more info `:h Termdebug`.
 
-To see the changes, check the README.md in the `1-proposed changes` branch and/or check issue #1.
+Default mapings
+
+    nnoremap <silent> B <cmd>Break<cr>
+    nnoremap <silent> T <cmd>Tbreak<cr>
+    nnoremap <silent> D <cmd>Clear<cr>
+    nnoremap <silent> C <cmd>Continue<cr>
+    nnoremap <silent> I <cmd>Step<cr>
+    nnoremap <silent> O <cmd>Next<cr>
+    nnoremap <silent> F <cmd>Finish<cr>
+    nnoremap <silent> S <cmd>Stop<cr>
+    nnoremap <silent> U <cmd>Until<cr>
+    nnoremap <silent> K <cmd>Evaluate
+    nnoremap <silent> R <cmd>Run<cr>
+    nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>

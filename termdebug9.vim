@@ -99,7 +99,6 @@ var breakpoint_locations: dict<any>
 var BreakpointSigns: list<string>
 
 
-# UBA bool?
 var evalFromBalloonExpr: bool
 var evalFromBalloonExprResult: string
 var ignoreEvalError: bool
@@ -197,9 +196,13 @@ def InitScriptVars()
 
 
   existing_mappings = {}
-  default_key_mapping = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T']
+  default_key_mapping = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
 
-  saved_mousemodel = &mousemodel
+  if has('menu')
+    saved_mousemodel = &mousemodel
+  else
+    saved_mousemodel = ''
+  endif
 enddef
 
 
@@ -1168,7 +1171,6 @@ def InstallCommands()
     # using -exec-continue results in CTRL-C in the gdb window not working,
     # communicating via commbuf (= use of SendCommand) has the same result
     command Continue   SendCommand('-exec-continue')
-    # command Continue  term_sendkeys(gdbbuf, "continue\r")
   endif
 
   command -nargs=* Frame  Frame(<q-args>)
@@ -1183,25 +1185,6 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
-
-  # UBA: Mappings
-  noremap <unique> <script> <Plug>Break <cmd>Break
-  noremap <unique> <script> <Plug>TBreak <cmd>TBreak
-  noremap <unique> <script> <Plug>Clear <cmd>Clear
-  noremap <unique> <script> <Plug>Continue <cmd>Continue
-  noremap <unique> <script> <Plug>Step <cmd>Step
-  noremap <unique> <script> <Plug>Over <cmd>Over
-  noremap <unique> <script> <Plug>Until <cmd>Until
-  noremap <unique> <script> <Plug>Finish <cmd>Finish
-  noremap <unique> <script> <Plug>Run <cmd>Run
-  noremap <unique> <script> <Plug>Stop <cmd>Stop
-
-  noremap <unique> <script> <Plug>Frame <cmd>Frame
-  noremap <unique> <script> <Plug>Up <cmd>Up
-  noremap <unique> <script> <Plug>Down <cmd>Down
-
-  noremap <unique> <script> <Plug>Evaluate <cmd>Evaluate<cr>
-
   var use_default_mapping = true
   if use_default_mapping
     # Save possibly existing mappings
@@ -1211,59 +1194,23 @@ def InstallCommands()
         endif
     endfor
 
-    # UBA may be nnoremap. Missing UP and DOWN
-    nmap <silent> C <Plug>Continue<cr>
-    nmap <silent> B <Plug>Break<cr>
-    nmap <silent> D <Plug>Clear<cr>
-    nmap <silent> I <Plug>Step<cr>
-    nmap <silent> O <Plug>Next<cr>
-    nmap <silent> F <Plug>Finish<cr>
-    nmap <silent> S <Plug>Stop<cr>
-    nmap <silent> U <Plug>Until<cr>
-    nmap <silent> T <Plug>Tbreak<cr>
-    nmap <silent> K <Plug>Evaluate
-    nmap <silent> R <Plug>Run<cr>
-    # UBA: does not work
-    nmap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
+    # UBA may be another map?
+    nnoremap <silent> B <cmd>Break<cr>
+    nnoremap <silent> T <cmd>Tbreak<cr>
+    nnoremap <silent> D <cmd>Clear<cr>
+    nnoremap <silent> C <cmd>Continue<cr>
+    nnoremap <silent> I <cmd>Step<cr>
+    nnoremap <silent> O <cmd>Next<cr>
+    nnoremap <silent> F <cmd>Finish<cr>
+    nnoremap <silent> S <cmd>Stop<cr>
+    nnoremap <silent> U <cmd>Until<cr>
+    nnoremap <silent> K <cmd>Evaluate
+    nnoremap <silent> R <cmd>Run<cr>
+    nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
 
+    nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+    nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
   endif
-
-  # UBA: By default, we assume we have a map
-  # var map = 1
-  # if exists('g:termdebug_config')
-  #   map = get(g:termdebug_config, 'map_K', 1)
-  # elseif exists('g:termdebug_map_K')
-  #   map = g:termdebug_map_K
-  # endif
-
-  # if map
-  #   k_map_saved = maparg('K', 'n', 0, 1)
-  #   if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
-  #     nnoremap K :Evaluate<CR>
-  #   endif
-  # endif
-
-  # map = 1
-  # if exists('g:termdebug_config')
-  #   map = get(g:termdebug_config, 'map_plus', 1)
-  # endif
-  # if map
-  #   plus_map_saved = maparg('+', 'n', 0, 1)
-  #   if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
-  #     nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-  #   endif
-  # endif
-
-  # map = 1
-  # if exists('g:termdebug_config')
-  #   map = get(g:termdebug_config, 'map_minus', 1)
-  # endif
-  # if map
-  #   minus_map_saved = maparg('-', 'n', 0, 1)
-  #   if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
-  #     nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
-  #   endif
-  # endif
 
 
   if has('menu') && &mouse != ''
@@ -1277,8 +1224,6 @@ def InstallCommands()
     endif
 
     if popup
-      # UBA
-      # saved_mousemodel = &mousemodel
       &mousemodel = 'popup_setpos'
       an 1.200 PopUp.-SEP3-	<Nop>
       an 1.210 PopUp.Set\ breakpoint	:Break<CR>
