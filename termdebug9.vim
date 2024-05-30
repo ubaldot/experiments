@@ -810,13 +810,13 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if ptybuf > 0
+  if exists(ptybuf) && ptybuf > 0
     exe 'bwipe! ' .. ptybuf
   endif
-  if asmbuf > 0
+  if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if varbuf > 0
+  if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = 0
