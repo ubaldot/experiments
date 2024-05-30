@@ -55,7 +55,7 @@ g:termdebug_config = {}
 g:termdebug_config['variables_window'] = 1
 g:termdebug_config['disasm_window'] = 1
 g:termdebug_config['timeout'] = 500
-g:termdebug_config['wide'] = 50
+# g:termdebug_config['wide'] = 50
 # g:termdebug_config['use_prompt'] = true
 # =========================
 
@@ -801,7 +801,7 @@ def GdbOutCallback(channel: channel, text: string)
   ch_log('received from gdb: ' .. text)
 
   # Disassembly messages need to be forwarded as-is.
-  if parsing_disasm_msg
+  if parsing_disasm_msg > 0
     CommOutput(channel, text)
     return
   endif
@@ -1125,7 +1125,7 @@ def CommOutput(chan: channel, message: string)
       msg = received_msg
     endif
 
-    if parsing_disasm_msg
+    if parsing_disasm_msg > 0
       HandleDisasmMsg(msg)
     elseif msg != ''
       if msg =~ '^\(\*stopped\|\*running\|=thread-selected\)'
