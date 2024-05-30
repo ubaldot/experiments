@@ -605,9 +605,12 @@ def StartDebug_prompt(dict: dict<any>)
   # Overwrite gdbbufname, if you can
   if empty(glob(gdb_cmd[0]))
     gdbbufname = gdb_cmd[0]
+  else
+    Echoerr("You have a file/folder named " .. gdbbufname .. " in the current directory
+          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
   endif
   exe "file " .. gdbbufname
-  # file arm-none-eabi-gdb
+
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
 
@@ -1665,6 +1668,10 @@ def GotoAsmwinOrCreateIt()
       asmbufname = nice_name
       exe "silent file " .. asmbufname
       asmbuf = bufnr(asmbufname)
+    else
+      Echoerr("You have a file/folder named " .. nice_name .. " in the current directory.
+          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
+      return
     endif
 
     if mdf != 'vert' && GetDisasmWindowHeight() > 0
@@ -1743,6 +1750,10 @@ def GotoVariableswinOrCreateIt()
       varbufname = nice_name
       exe "silent file " .. varbufname
       varbuf = bufnr(varbufname)
+    else
+      Echoerr("You have a file/folder named " .. nice_name .. " in the current directory.
+          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
+      return
     endif
 
     if mdf != 'vert' && GetVariablesWindowHeight() > 0
