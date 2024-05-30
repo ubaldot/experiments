@@ -38,18 +38,10 @@ vim9script
 # https://sourceware.org/gdb/current/onlinedocs/gdb/GDB_002fMI.html
 
 # In case this gets sourced twice.
-# UBA
-# if exists(":Termdebug")
-#   finish
-# endif
-
-# ==============FOR TESTS
-g:termdebug_config = {}
-# g:termdebug_config['command'] = "arm-none-eabi-gdb"
-g:termdebug_config['variables_window'] = 1
-g:termdebug_config['disasm_window'] = 1
-# g:termdebug_config['use_prompt'] = 1
-# =========================
+if exists('g:termdebug_loaded')
+  finish
+endif
+g:termdebug_loaded = true
 
 
 var way = 'terminal'
@@ -137,9 +129,6 @@ else
   finish
 endif
 
-# UBA I think this could be removed in Vim9
-var keepcpo = &cpo
-set cpo&vim
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
@@ -224,12 +213,6 @@ def StartDebug_internal(dict: dict<any>)
     doauto <nomodeline> User TermdebugStartPre
   endif
 
-  # UBA
-  # Add init function here
-  #
-  # Uncomment this line to write logging in "debuglog".
-  # call ch_logfile('debuglog', 'w')
-
   # Assume current window is the source code window
   sourcewin = win_getid()
   var wide = 0
@@ -271,7 +254,6 @@ def StartDebug_internal(dict: dict<any>)
     StartDebug_term(dict)
   endif
 
-  # UBA Add eventual other windows here
   if GetDisasmWindow()
     var curwinid = win_getid()
     GotoAsmwinOrCreateIt()
@@ -385,14 +367,10 @@ def StartDebug_term(dict: dict<any>)
   echo "starting gdb with: " .. join(gdb_cmd)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
-  # UBA: for the other windows create first a split and then wincmd L. Resize
-  # also a bit
   gdbbuf = term_start(gdb_cmd, {
         \ 'term_name': gdb_cmd[0],
         \ 'term_finish': 'close',
         \ })
-  # UBA: buffer name is the same as the gdb command.
-  # \ 'term_name': 'gdb',
   if gdbbuf == 0
     Echoerr('Failed to open the gdb terminal window')
     CloseBuffers()
@@ -407,7 +385,6 @@ def StartDebug_term(dict: dict<any>)
   while success == false && counter < counter_max
     if CheckGdbRunning() != 'ok'
       # Failure. If NOK just return.
-      # UBA: call CloseBuffers()?
       return
     endif
 
@@ -501,9 +478,17 @@ def StartDebug_prompt(dict: dict<any>)
   promptbuf = bufnr('')
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
-  # UBA: perhaps here you need g:term_config['command'][0] or similar...
-  file gdb
-  # file arm-none-eabi-gdb
+
+  if empty(glob('gdb'))
+    file gdb
+  elseif empty(glob('Termdebug-gdb-console'))
+    file Termdebug-gdb-console
+  else
+    Echoerr("You have a file/folder named 'gdb'
+          \ or 'Termdebug-gdb-console'.
+          \ Please exit and rename them because Termdebug may not work as expected.")
+  endif
+
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
 
@@ -695,7 +680,7 @@ def GdbOutCallback(channel: channel, text: string)
   ch_log('received from gdb: ' .. text)
 
   # Disassembly messages need to be forwarded as-is.
-  if parsing_disasm_msg
+  if parsing_disasm_msg > 0
     CommOutput(channel, text)
     return
   endif
@@ -740,7 +725,6 @@ enddef
 # - change \0xhh to \xhh (disabled for now)
 # - change \ooo to octal
 # - change \\ to \
-#   UBA: we may use the standard MI message formats?
 def DecodeMessage(quotedText: string, literal: bool): string
   if quotedText[0] != '"'
     Echoerr('DecodeMessage(): missing quote in ' .. quotedText)
@@ -810,7 +794,7 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if exists(ptybuf) && ptybuf > 0
+  if ptybuf > 0 && bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
   if asmbuf > 0 && bufexists(asmbuf)
@@ -872,7 +856,6 @@ def EndPromptDebug(job: any, status: any)
   endif
 
   EndDebugCommon()
-  # UBA
   gdbwin = 0
   ch_log("Returning from EndPromptDebug()")
 enddef
@@ -1017,7 +1000,7 @@ def CommOutput(chan: channel, message: string)
       msg = received_msg
     endif
 
-    if parsing_disasm_msg
+    if parsing_disasm_msg > 0
       HandleDisasmMsg(msg)
     elseif msg != ''
       if msg =~ '^\(\*stopped\|\*running\|=thread-selected\)'
@@ -1057,9 +1040,6 @@ enddef
 
 # Install commands in the current window to control the debugger.
 def InstallCommands()
-  # UBA :check. Do we need them in Vim9?
-  var save_cpo = &cpo
-  set cpo&vim
 
   command -nargs=? Break  SetBreakpoint(<q-args>)
   command -nargs=? Tbreak  SetBreakpoint(<q-args>, true)
@@ -1094,7 +1074,6 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
-  # UBA: By default, we assume we have a map
   var map = 1
   if exists('g:termdebug_config')
     map = get(g:termdebug_config, 'map_K', 1)
@@ -1153,7 +1132,6 @@ def InstallCommands()
     endif
   endif
 
-  &cpo = save_cpo
 enddef
 
 # Install the window toolbar in the current window.
@@ -1337,8 +1315,6 @@ def ClearBreakpoint()
       if empty(breakpoint_locations[bploc])
         remove(breakpoint_locations, bploc)
       endif
-      # UBA:
-      # id has been replaced with nr. Is it correct?
       echomsg 'Breakpoint ' .. nr .. ' cleared from line ' .. lnum .. '.'
     else
       Echoerr('Internal error trying to remove breakpoint at line ' .. lnum .. '!')
@@ -1583,9 +1559,12 @@ def GotoAsmwinOrCreateIt()
 
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
-    else
+    elseif empty(glob('Termdebug-asm-listing'))
       silent file Termdebug-asm-listing
       asmbuf = bufnr('Termdebug-asm-listing')
+    else
+      Echoerr("You have a file/folder named 'Termdebug-asm-listing'.
+          \ Please exit and rename it because Termdebug may not work as expected.")
     endif
 
     if mdf != 'vert' && GetDisasmWindowHeight() > 0
@@ -1653,9 +1632,12 @@ def GotoVariableswinOrCreateIt()
 
     if varbuf > 0 && bufexists(varbuf)
       exe 'buffer' .. varbuf
-    else
+    elseif empty(glob('Termdebug-variables-listing'))
       silent file Termdebug-variables-listing
       varbuf = bufnr('Termdebug-variables-listing')
+    else
+      Echoerr("You have a file/folder named 'Termdebug-variables-listing'.
+          \ Please exit and rename it because Termdebug may not work as expected.")
     endif
 
     if mdf != 'vert' && GetVariablesWindowHeight() > 0
@@ -1879,8 +1861,6 @@ enddef
 # Handle deleting a breakpoint
 # Will remove the sign that shows the breakpoint
 def HandleBreakpointDelete(msg: string)
-  # UBA CHECK THIS: why +0 at the end? Is that a sort of ASCII conversion?
-  # var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
   var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '')
   if empty(id)
     return
@@ -1893,7 +1873,6 @@ def HandleBreakpointDelete(msg: string)
         remove(entry, 'placed')
       endif
     endfor
-    # UBA:
     remove(breakpoints, id)
     echomsg 'Breakpoint ' .. id .. ' cleared.'
   endif
@@ -1902,8 +1881,6 @@ enddef
 # Handle the debugged program starting to run.
 # Will store the process ID in pid
 def HandleProgramRun(msg: string)
-  # UBA: ??? Why + 0?
-  # var nr = substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', '') + 0
   var nr = str2nr(substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', ''))
   if nr == 0
     return
@@ -1939,8 +1916,6 @@ enddef
 InitHighlight()
 InitAutocmd()
 
-&cpo = keepcpo
-# unlet keepcpo
 
 #
 #
