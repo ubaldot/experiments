@@ -368,7 +368,7 @@ def StartDebug_term(dict: dict<any>)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
   gdbbuf = term_start(gdb_cmd, {
-        \ 'term_name': gdb_cmd[0],
+        \ 'term_name': 'gdb',
         \ 'term_finish': 'close',
         \ })
   if gdbbuf == 0
@@ -736,8 +736,7 @@ def DecodeMessage(quotedText: string, literal: bool): string
         #\ multi-byte characters arrive in octal form
         #\ NULL-values must be kept encoded as those break the string otherwise
         \ ->substitute('\\000', NullRepl, 'g')
-        # UBA old lambda replaced with new lambda syntax
-        \ ->substitute('\\\o\o\o',  => eval('"' .. submatch(0) .. '"'), 'g')
+        \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
@@ -786,7 +785,9 @@ def EndTermDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  exe 'bwipe! ' .. commbuf
+  if bufexists(commbuf)
+    exe 'bwipe! ' .. commbuf
+  endif
   gdbwin = 0
   EndDebugCommon()
 enddef
@@ -794,13 +795,13 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if ptybuf > 0 && bufexists(ptybuf)
+  if bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
-  if asmbuf > 0 && bufexists(asmbuf)
+  if bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if varbuf > 0 && bufexists(varbuf)
+  if bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = 0
@@ -977,19 +978,7 @@ def CommOutput(chan: channel, message: string)
   # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Input-Syntax.html#GDB_002fMI-Input-Syntax
   # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Output-Syntax.html#GDB_002fMI-Output-Syntax
 
-
-  # UBA: for checking what the MI interface spits out
-  # echom "message_orig: " .. message
-
-  # UBA: For some reasons, now it works
   var msgs = split(message, "\r")
-
-  # UBA: attempts to remove the ^@ (null char)
-  # var msgs = split(message, '\r\%x0')
-  # UBA: the EOL for different platforms shall be tested
-
-  # UBA: for checking how the lines are split
-  # echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
@@ -1442,7 +1431,7 @@ def HandleEvaluate(msg: string)
         #\ multi-byte characters arrive in octal form, replace everything but NULL values
         \ ->substitute('\\000', NullRepl, 'g')
         # \ ->substitute('\\\o\o\o', {-> eval('"' .. submatch(0) .. '"')}, 'g')
-        \ ->substitute('\\\o\o\o', => eval('"' .. submatch(0) .. '"'), 'g')
+        \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
@@ -1742,6 +1731,7 @@ def HandleCursor(msg: string)
   win_gotoid(wid)
 enddef
 
+# Create breakpoint sign
 def CreateBreakpoint(id: number, subid: number, enabled: string)
   var nr = printf('%d.%d', id, subid)
   if index(BreakpointSigns, nr) == -1
@@ -1755,8 +1745,7 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
     var label = ''
     if exists('g:termdebug_config')
       label = get(g:termdebug_config, 'sign', '')
-    endif
-    if label == ''
+    else
       label = printf('%02X', id)
       if id > 255
         label = 'F+'
@@ -1803,7 +1792,6 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
     var [id, subid; _] = map(split(nr .. '.0', '\.'), 'str2nr(v:val) + 0')
     # var [id, subid; _] = map(split(nr .. '.0', '\.'), 'v:val + 0')
     var enabled = substitute(mm, '.*enabled="\([yn]\)".*', '\1', '')
-    # CreateBreakpoint(str2nr(id), str2nr(subid), enabled)
     CreateBreakpoint(id, subid, enabled)
 
     var entries = {}
@@ -1819,7 +1807,6 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
       entries[subid] = entry
     endif
 
-    # var lnum = substitute(mm, '.*line="\([^"]*\)".*', '\1', '')
     var lnum = str2nr(substitute(mm, '.*line="\([^"]*\)".*', '\1', ''))
     entry['fname'] = fname
     entry['lnum'] = lnum
