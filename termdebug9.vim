@@ -797,6 +797,7 @@ def PromptInterrupt()
 enddef
 
 # Function called when gdb outputs text.
+# Only called when using prompt buffer
 def GdbOutCallback(channel: channel, text: string)
   ch_log('received from gdb: ' .. text)
 
@@ -840,9 +841,9 @@ enddef
 
 # Decode a message from gdb.  "quotedText" starts with a ", return the text up
 # to the next unescaped ", unescaping characters:
-# - remove line breaks (unless "literal" is v:true)
+# - remove line breaks (unless "literal" is true)
 # - change \" to "
-# - change \\t to \t (unless "literal" is v:true)
+# - change \\t to \t (unless "literal" is true)
 # - change \0xhh to \xhh (disabled for now)
 # - change \ooo to octal
 # - change \\ to \
@@ -858,8 +859,8 @@ def DecodeMessage(quotedText: string, literal: bool): string
         #\ multi-byte characters arrive in octal form
         #\ NULL-values must be kept encoded as those break the string otherwise
         \ ->substitute('\\000', NullRepl, 'g')
-        # UBA old lambda replaced with new lambda syntax
-        \ ->substitute('\\\o\o\o',  => eval('"' .. submatch(0) .. '"'), 'g')
+        \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
+        # You could also  use ->substitute('\\\\\(\o\o\o\)', '\=nr2char(str2nr(submatch(1), 8))', "g")
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
@@ -908,7 +909,7 @@ def EndTermDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  if commbuf > 0 && bufexists(commbuf)
+  if bufexists(commbuf)
     exe 'bwipe! ' .. commbuf
   endif
 
@@ -919,13 +920,13 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if ptybuf > 0 && bufexists(ptybuf)
+  if bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
-  if asmbuf > 0 && bufexists(asmbuf)
+  if bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if varbuf > 0 && bufexists(varbuf)
+  if bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = false
@@ -1539,8 +1540,7 @@ def HandleEvaluate(msg: string)
         \ ->substitute('\\\\', '\\', 'g')
         #\ multi-byte characters arrive in octal form, replace everything but NULL values
         \ ->substitute('\\000', NullRepl, 'g')
-        # \ ->substitute('\\\o\o\o', {-> eval('"' .. submatch(0) .. '"')}, 'g')
-        \ ->substitute('\\\o\o\o', => eval('"' .. submatch(0) .. '"'), 'g')
+        \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
@@ -1863,6 +1863,7 @@ def HandleCursor(msg: string)
   win_gotoid(wid)
 enddef
 
+# Create breakpoint sign
 def CreateBreakpoint(id: number, subid: number, enabled: string)
   var nr = printf('%d.%d', id, subid)
   if index(BreakpointSigns, nr) == -1
@@ -1876,8 +1877,7 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
     var label = ''
     if exists('g:termdebug_config')
       label = get(g:termdebug_config, 'sign', '')
-    endif
-    if label == ''
+    else
       label = printf('%02X', id)
       if id > 255
         label = 'F+'
@@ -1984,7 +1984,7 @@ enddef
 def HandleBreakpointDelete(msg: string)
   # UBA CHECK THIS: why +0 at the end? Is that a sort of ASCII conversion?
   # var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
-  var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '')
+  var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
   if empty(id)
     return
   endif
