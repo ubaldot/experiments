@@ -17,7 +17,7 @@ RunTestsInFile() {
   testfile=$1
   echo "Running tests in $testfile"
   # If you want to see the output remove the & from the line below
-  $VIM_CMD -c "vim9cmd g:TestName = '$testfile'" -S runner.vim &
+  $VIM_CMD -c "vim9cmd g:TestName = '$testfile'" -S runner.vim
 
   if ! [ -f results.txt ]; then
     echo "ERROR: Test results file 'results.txt' is not found."
@@ -43,6 +43,6 @@ done
 echo "SUCCESS: All the tests passed."
 # UBA: uncomment the line below
 # exit 0
-kill %- > /dev/null
+# kill %- > /dev/null
 
 # vim: shiftwidth=2 softtabstop=2 noexpandtab

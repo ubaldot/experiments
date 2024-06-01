@@ -224,78 +224,79 @@ def g:Test_termdebug_tbreak()
   Cleanup_files(bin_name)
   execute(":%bw!")
 enddef
-#
-#func Test_termdebug_mapping()
-  #%bw!
-   #assert_true(maparg('K', 'n', 0, 1)->empty())
-   #assert_true(maparg('-', 'n', 0, 1)->empty())
-   #assert_true(maparg('+', 'n', 0, 1)->empty())
-  #Termdebug
-   #WaitForAssert({-> assert_equal(3, winnr('$'))})
-  #wincmd b
-   #assert_false(maparg('K', 'n', 0, 1)->empty())
-   #assert_false(maparg('-', 'n', 0, 1)->empty())
-   #assert_false(maparg('+', 'n', 0, 1)->empty())
-   #assert_false(maparg('K', 'n', 0, 1).buffer)
-   #assert_false(maparg('-', 'n', 0, 1).buffer)
-   #assert_false(maparg('+', 'n', 0, 1).buffer)
-   #assert_equal(':Evaluate<CR>', maparg('K', 'n', 0, 1).rhs)
-  #wincmd t
-  #quit!
-  #redraw!
-   #WaitForAssert({-> assert_equal(1, winnr('$'))})
-   #assert_true(maparg('K', 'n', 0, 1)->empty())
-   #assert_true(maparg('-', 'n', 0, 1)->empty())
-   #assert_true(maparg('+', 'n', 0, 1)->empty())
-#
-  #%bw!
-  #nnoremap K :echom "K"<cr>
-  #nnoremap - :echom "-"<cr>
-  #nnoremap + :echom "+"<cr>
-  #Termdebug
-   #WaitForAssert({-> assert_equal(3, winnr('$'))})
-  #wincmd b
-   #assert_false(maparg('K', 'n', 0, 1)->empty())
-   #assert_false(maparg('-', 'n', 0, 1)->empty())
-   #assert_false(maparg('+', 'n', 0, 1)->empty())
-   #assert_false(maparg('K', 'n', 0, 1).buffer)
-   #assert_false(maparg('-', 'n', 0, 1).buffer)
-   #assert_false(maparg('+', 'n', 0, 1).buffer)
-   #assert_equal(':Evaluate<CR>', maparg('K', 'n', 0, 1).rhs)
-  #wincmd t
-  #quit!
-  #redraw!
-   #WaitForAssert({-> assert_equal(1, winnr('$'))})
-   #assert_false(maparg('K', 'n', 0, 1)->empty())
-   #assert_false(maparg('-', 'n', 0, 1)->empty())
-   #assert_false(maparg('+', 'n', 0, 1)->empty())
-   #assert_false(maparg('K', 'n', 0, 1).buffer)
-   #assert_false(maparg('-', 'n', 0, 1).buffer)
-   #assert_false(maparg('+', 'n', 0, 1).buffer)
-   #assert_equal(':echom "K"<cr>', maparg('K', 'n', 0, 1).rhs)
-#
-  #%bw!
-  #nnoremap <buffer> K :echom "bK"<cr>
-  #nnoremap <buffer> - :echom "b-"<cr>
-  #nnoremap <buffer> + :echom "b+"<cr>
-  #Termdebug
-   #WaitForAssert({-> assert_equal(3, winnr('$'))})
-  #wincmd b
-   #assert_true(maparg('K', 'n', 0, 1).buffer)
-   #assert_true(maparg('-', 'n', 0, 1).buffer)
-   #assert_true(maparg('+', 'n', 0, 1).buffer)
-   #assert_equal(maparg('K', 'n', 0, 1).rhs, ':echom "bK"<cr>')
-  #wincmd t
-  #quit!
-  #redraw!
-   #WaitForAssert({-> assert_equal(1, winnr('$'))})
-   #assert_true(maparg('K', 'n', 0, 1).buffer)
-   #assert_true(maparg('-', 'n', 0, 1).buffer)
-   #assert_true(maparg('+', 'n', 0, 1).buffer)
-   #assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
-#
-  #%bw!
-#endfunc
+
+
+def g:Test_termdebug_mapping()
+  execute(":%bw!")
+  assert_true(maparg('K', 'n', 0, 1)->empty())
+  assert_true(maparg('-', 'n', 0, 1)->empty())
+  assert_true(maparg('+', 'n', 0, 1)->empty())
+  Termdebug
+  WaitForAssert(() => assert_equal(3, winnr('$')))
+  wincmd b
+  assert_false(maparg('K', 'n', 0, 1)->empty())
+  assert_false(maparg('-', 'n', 0, 1)->empty())
+  assert_false(maparg('+', 'n', 0, 1)->empty())
+  assert_false(maparg('K', 'n', 0, 1).buffer)
+  assert_false(maparg('-', 'n', 0, 1).buffer)
+  assert_false(maparg('+', 'n', 0, 1).buffer)
+  assert_equal(':Evaluate<CR>', maparg('K', 'n', 0, 1).rhs)
+  wincmd t
+  quit!
+  redraw!
+  WaitForAssert(() => assert_equal(1, winnr('$')))
+  assert_true(maparg('K', 'n', 0, 1)->empty())
+  assert_true(maparg('-', 'n', 0, 1)->empty())
+  assert_true(maparg('+', 'n', 0, 1)->empty())
+
+  execute(":%bw!")
+  nnoremap K :echom "K"<cr>
+  nnoremap - :echom "-"<cr>
+  nnoremap + :echom "+"<cr>
+  Termdebug
+  WaitForAssert(() => assert_equal(3, winnr('$')))
+  wincmd b
+  assert_false(maparg('K', 'n', 0, 1)->empty())
+  assert_false(maparg('-', 'n', 0, 1)->empty())
+  assert_false(maparg('+', 'n', 0, 1)->empty())
+  assert_false(maparg('K', 'n', 0, 1).buffer)
+  assert_false(maparg('-', 'n', 0, 1).buffer)
+  assert_false(maparg('+', 'n', 0, 1).buffer)
+  assert_equal(':Evaluate<CR>', maparg('K', 'n', 0, 1).rhs)
+  wincmd t
+  quit!
+  redraw!
+  WaitForAssert(() => assert_equal(1, winnr('$')))
+  assert_false(maparg('K', 'n', 0, 1)->empty())
+  assert_false(maparg('-', 'n', 0, 1)->empty())
+  assert_false(maparg('+', 'n', 0, 1)->empty())
+  assert_false(maparg('K', 'n', 0, 1).buffer)
+  assert_false(maparg('-', 'n', 0, 1).buffer)
+  assert_false(maparg('+', 'n', 0, 1).buffer)
+  assert_equal(':echom "K"<cr>', maparg('K', 'n', 0, 1).rhs)
+
+  execute(":%bw!")
+  nnoremap <buffer> K :echom "bK"<cr>
+  nnoremap <buffer> - :echom "b-"<cr>
+  nnoremap <buffer> + :echom "b+"<cr>
+  Termdebug
+  WaitForAssert(() => assert_equal(3, winnr('$')))
+  wincmd b
+  assert_true(maparg('K', 'n', 0, 1).buffer)
+  assert_true(maparg('-', 'n', 0, 1).buffer)
+  assert_true(maparg('+', 'n', 0, 1).buffer)
+  assert_equal(maparg('K', 'n', 0, 1).rhs, ':echom "bK"<cr>')
+  wincmd t
+  quit!
+  redraw!
+  WaitForAssert(() => assert_equal(1, winnr('$')))
+  assert_true(maparg('K', 'n', 0, 1).buffer)
+  assert_true(maparg('-', 'n', 0, 1).buffer)
+  assert_true(maparg('+', 'n', 0, 1).buffer)
+  assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
+
+  execute(":%bw!")
+enddef
 #
 def g:Test_termdebug_bufnames()
   # Test if user has filename/folders named gdb, Termdebug-gdb-console,
