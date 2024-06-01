@@ -1222,8 +1222,8 @@ def DeleteCommands()
   endif
 
   sign_unplace('TermDebug')
-  breakpoints = null_dict
-  breakpoint_locations = null_dict
+  breakpoints = {}
+  breakpoint_locations = {}
 
   sign_undefine('debugPC')
   sign_undefine(BreakpointSigns->map("'debugBreakpoint' .. v:val"))
