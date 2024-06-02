@@ -1743,8 +1743,8 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
       hiName = "debugBreakpoint"
     endif
     var label = ''
-    if exists('g:termdebug_config')
-      label = get(g:termdebug_config, 'sign', '')
+    if exists('g:termdebug_config') && has_key(g:termdebug_config, 'sign')
+      label = g:termdebug_config['sign']
     else
       label = printf('%02X', id)
       if id > 255

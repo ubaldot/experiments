@@ -77,8 +77,5 @@ export def WaitFor(expr: any, ...itemlist: list<number>)
   return slept
 enddef
 
-def g:PIPPO()
-  echom 'PIPPO'
-enddef
 
 # vim: shiftwidth=2 softtabstop=2 noexpandtab

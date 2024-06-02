@@ -113,7 +113,7 @@ def g:Test_termdebug_basic()
     if count == 258
        WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint258.0')[0].text, 'F+'))
     endif
-       count += 1
+    count += 1
   endwhile
 
   count = 0
@@ -316,10 +316,12 @@ def g:Test_termdebug_bufnames()
   WaitForAssert(() => assert_false(bufexists(filename)))
   WaitForAssert(() => assert_true(bufexists(replacement_filename)))
   # Quit the debugger
+  wincmd t
   quit!
   WaitForAssert(() => assert_equal(1, winnr('$')))
+  execute(":%bw!")
 
-  # Check if error message is in :message
+  # # Check if error message is in :message
   g:termdebug_config['disasm_window'] = 1
   filename = 'Termdebug-asm-listing'
   writefile(['This', 'is', 'a', 'test'], filename, 'D')
@@ -329,14 +331,21 @@ def g:Test_termdebug_bufnames()
   Termdebug
   # Once termdebug has completed the startup you should have 4 windows on screen
   WaitForAssert(() => assert_equal(4, winnr('$')))
-  WaitForAssert(() => assert_notequal(-1, stridx(execute('messages'), error_message)))
-  # Quit the debugger
-  quit!
-  wincmd b
+  WaitForAssert(() => assert_true(execute('messages') =~ error_message))
+  # Close Asm window
+  execute("Asm")
   wincmd q
+  # Jump to top window (gbd is located on top during the test)
+  wincmd t
+  # quit Termdebug
+  quit!
+  redraw!
   WaitForAssert(() => assert_equal(1, winnr('$')))
+  assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
 
-  unlet g:termdebug_config
+  g:termdebug_config = {}
+  execute(":%bw!")
+
 enddef
 
 

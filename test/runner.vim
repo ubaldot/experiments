@@ -6,7 +6,7 @@ vim9script
 # The global variable TestName should be set to the name of the file
 # containing the tests.
 
-source common.vim
+# source common.vim
 
 def RunTests()
   :set nomore
