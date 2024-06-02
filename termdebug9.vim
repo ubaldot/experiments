@@ -50,11 +50,11 @@ endif
 # g:termdebug9_loaded = true
 
 # ==============FOR TESTS
-g:termdebug_config = {}
+# g:termdebug_config = {}
 # g:termdebug_config['command'] = "arm-none-eabi-gdb"
-g:termdebug_config['variables_window'] = 1
-g:termdebug_config['disasm_window'] = 1
-g:termdebug_config['timeout'] = 500
+# g:termdebug_config['variables_window'] = 1
+# g:termdebug_config['disasm_window'] = 1
+# g:termdebug_config['timeout'] = 500
 # g:termdebug_config['wide'] = 50
 # g:termdebug_config['use_prompt'] = true
 # =========================
@@ -221,15 +221,15 @@ else
   else
     err = 'Cannot debug, +channel feature is not supported'
   endif
-  command -nargs=* -complete=file -bang Termdebug echoerr err
-  command -nargs=+ -complete=file -bang TermdebugCommand echoerr err
+  command! -nargs=* -complete=file -bang Termdebug echoerr err
+  command! -nargs=+ -complete=file -bang TermdebugCommand echoerr err
   finish
 endif
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
-command -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
-command -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
+command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
+command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
 
 
 # Take a breakpoint number as used by GDB and turn it into an integer.
@@ -1739,8 +1739,8 @@ def GotoVariableswinOrCreateIt()
 
     # If exists, then open, otherwise create (but check if there is no
     # file/directory with the same name as nice_name)
-    if bufexists(varbuf)
-      exe 'buffer' .. varbuf
+    if varbuf > 0 && bufexists(varbuf)
+      exe ':buffer ' .. varbuf
     elseif empty(glob(nice_name))
       varbufname = nice_name
       exe "silent file " .. varbufname
@@ -1875,8 +1875,8 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
 
     # UBA: Fix
     var label = ''
-    if exists('g:termdebug_config')
-      label = get(g:termdebug_config, 'sign', '')
+    if exists('g:termdebug_config') && has_key(g:termdebug_config, 'sign')
+      label = g:termdebug_config['sign']
     else
       label = printf('%02X', id)
       if id > 255
@@ -1987,7 +1987,7 @@ enddef
 def HandleBreakpointDelete(msg: string)
   # UBA CHECK THIS: why +0 at the end? Is that a sort of ASCII conversion?
   # var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
-  var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
+  var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '')
   if empty(id)
     return
   endif

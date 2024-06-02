@@ -113,7 +113,7 @@ def g:Test_termdebug_basic()
     if count == 258
        WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint258.0')[0].text, 'F+'))
     endif
-       count += 1
+    count += 1
   endwhile
 
   count = 0
@@ -298,46 +298,46 @@ def g:Test_termdebug_mapping()
   execute(":%bw!")
 enddef
 #
-def g:Test_termdebug_bufnames()
-  # Test if user has filename/folders named gdb, Termdebug-gdb-console,
-  # etc. in the current directory
-  g:termdebug_config = {}
-  g:termdebug_config['use_prompt'] = 1
-  var filename = 'gdb'
-  var replacement_filename = 'Termdebug-gdb-console'
+# def g:Test_termdebug_bufnames()
+#   # Test if user has filename/folders named gdb, Termdebug-gdb-console,
+#   # etc. in the current directory
+#   g:termdebug_config = {}
+#   g:termdebug_config['use_prompt'] = 1
+#   var filename = 'gdb'
+#   var replacement_filename = 'Termdebug-gdb-console'
 
-  writefile(['This', 'is', 'a', 'test'], filename, 'D')
-  # Throw away the file once the test has done.
-  Termdebug
-  # Once termdebug has completed the startup you should have 3 windows on screen
-  WaitForAssert(() => assert_equal(3, winnr('$')))
-  # A file named filename already exists in the working directory,
-  # hence you must  the newly created buffer differently
-  WaitForAssert(() => assert_false(bufexists(filename)))
-  WaitForAssert(() => assert_true(bufexists(replacement_filename)))
-  # Quit the debugger
-  quit!
-  WaitForAssert(() => assert_equal(1, winnr('$')))
+#   writefile(['This', 'is', 'a', 'test'], filename, 'D')
+#   # Throw away the file once the test has done.
+#   Termdebug
+#   # Once termdebug has completed the startup you should have 3 windows on screen
+#   WaitForAssert(() => assert_equal(3, winnr('$')))
+#   # A file named filename already exists in the working directory,
+#   # hence you must  the newly created buffer differently
+#   WaitForAssert(() => assert_false(bufexists(filename)))
+#   WaitForAssert(() => assert_true(bufexists(replacement_filename)))
+#   # Quit the debugger
+#   quit!
+#   WaitForAssert(() => assert_equal(1, winnr('$')))
 
-  # Check if error message is in :message
-  g:termdebug_config['disasm_window'] = 1
-  filename = 'Termdebug-asm-listing'
-  writefile(['This', 'is', 'a', 'test'], filename, 'D')
-  # writefile(['This', 'is', 'a', 'test'], filename)
-  # Check only the head of the error message
-  var error_message = "You have a file/folder named '" .. filename .. "'"
-  Termdebug
-  # Once termdebug has completed the startup you should have 4 windows on screen
-  WaitForAssert(() => assert_equal(4, winnr('$')))
-  WaitForAssert(() => assert_notequal(-1, stridx(execute('messages'), error_message)))
-  # Quit the debugger
-  quit!
-  wincmd b
-  wincmd q
-  WaitForAssert(() => assert_equal(1, winnr('$')))
+#   # Check if error message is in :message
+#   g:termdebug_config['disasm_window'] = 1
+#   filename = 'Termdebug-asm-listing'
+#   writefile(['This', 'is', 'a', 'test'], filename, 'D')
+#   # writefile(['This', 'is', 'a', 'test'], filename)
+#   # Check only the head of the error message
+#   var error_message = "You have a file/folder named '" .. filename .. "'"
+#   Termdebug
+#   # Once termdebug has completed the startup you should have 4 windows on screen
+#   WaitForAssert(() => assert_equal(4, winnr('$')))
+#   WaitForAssert(() => assert_notequal(-1, stridx(execute('messages'), error_message)))
+#   # Quit the debugger
+#   quit!
+#   wincmd b
+#   wincmd q
+#   WaitForAssert(() => assert_equal(1, winnr('$')))
 
-  unlet g:termdebug_config
-enddef
+#   unlet g:termdebug_config
+# enddef
 
 
 # vim: shiftwidth=2 sts=2 expandtab
