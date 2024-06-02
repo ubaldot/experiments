@@ -3,13 +3,13 @@
 # Script to run the unit-tests for the termdebug9.vim
 # Copied and adapted from Vim LSP plugin
 
-VIMPRG=${VIMPRG:=$(which vim)}
+VIM_PRG=${VIMPRG:=$(which vim)}
 if [ -z "$VIMPRG" ]; then
   echo "ERROR: vim (\$VIMPRG) is not found in PATH"
   # exit 1
 fi
 
-VIM_CMD="$VIMPRG -u NONE -U NONE -i NONE --noplugin -N --not-a-term"
+VIM_CMD='$VIM_PRG -u NONE -U NONE -i NONE --noplugin -N --not-a-term'
 
 TESTS="test_termdebug.vim"
 
@@ -17,7 +17,7 @@ RunTestsInFile() {
   testfile=$1
   echo "Running tests in $testfile"
   # If you want to see the output remove the & from the line below
-  $VIM_CMD -c "vim9cmd g:TestName = '$testfile'" -S runner.vim
+  eval $VIM_CMD " -c \"vim9cmd g:TestName = '$testfile'\" -S runner.vim"
 
   if ! [ -f results.txt ]; then
     echo "ERROR: Test results file 'results.txt' is not found."
@@ -37,6 +37,7 @@ RunTestsInFile() {
 
 for testfile in $TESTS
 do
+  echo "Fanculi"
   RunTestsInFile $testfile
 done
 
