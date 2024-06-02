@@ -5,7 +5,7 @@
 
 VIM_PRG=${VIM_PRG:=$(which vim)}
 if [ -z "$VIM_PRG" ]; then
-  echo "ERROR: vim (\$VIMPRG) is not found in PATH"
+  echo "ERROR: vim (\$VIM_PRG) is not found in PATH"
   # exit 1
 fi
 
