@@ -127,12 +127,10 @@ var vvertical: bool
 
 var winbar_winids: list<number>
 
-
 var existing_mappings: dict<any>
 var default_key_mapping: list<string>
 
 var saved_mousemodel: string
-
 
 def InitScriptVars()
   way = 'terminal'
@@ -184,7 +182,6 @@ def InitScriptVars()
 # Each entry is a list of breakpoint IDs at that position.
   breakpoint_locations = {}
   BreakpointSigns = []
-
 
   evalFromBalloonExpr = false
   evalFromBalloonExprResult = ''
@@ -380,10 +377,10 @@ enddef
 def CloseBuffers()
   exe 'bwipe! ' .. ptybuf
   exe 'bwipe! ' .. commbuf
-  if asmbuf > 0 && bufexists(asmbuf)
+  if bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if varbuf > 0 && bufexists(varbuf)
+  if bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = false
@@ -440,7 +437,6 @@ def StartDebug_term(dict: dict<any>)
   endif
   setbufvar(commbuf, '&buflisted', false)
   var commpty = job_info(term_getjob(commbuf))['tty_out']
-
 
   # Start the gdb buffer
   var gdb_args = get(dict, 'gdb_args', [])
@@ -502,7 +498,6 @@ def StartDebug_term(dict: dict<any>)
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'timeout')
     counter_max = g:termdebug_config['timeout']
   endif
-
 
   var success = false
   while success == false && counter < counter_max
@@ -1230,14 +1225,14 @@ def InstallCommands()
   if has('menu') && &mouse != ''
     InstallWinbar(0)
 
-    var popup = 1
+    var pup = 1
     if exists('g:termdebug_config')
-      popup = get(g:termdebug_config, 'popup', 1)
+      pup = get(g:termdebug_config, 'popup', 1)
     elseif exists('g:termdebug_popup')
-      popup = g:termdebug_popup
+      pup = g:termdebug_popup
     endif
 
-    if popup
+    if pup
       &mousemodel = 'popup_setpos'
       an 1.200 PopUp.-SEP3-	<Nop>
       an 1.210 PopUp.Set\ breakpoint	:Break<CR>
@@ -1293,7 +1288,6 @@ def DeleteCommands()
   delcommand Var
   delcommand Winbar
 
-
   # Restore mappings
   for key in default_key_mapping
       exe "nunmap " .. key
@@ -1330,8 +1324,9 @@ def DeleteCommands()
   endif
 
   sign_unplace('TermDebug')
-  breakpoints = null_dict
-  breakpoint_locations = null_dict
+  # UBA Unset script variables my not be needed since you have a Init function.
+  breakpoints = {}
+  breakpoint_locations = {}
 
   sign_undefine('debugPC')
   sign_undefine(BreakpointSigns->map("'debugBreakpoint' .. v:val"))
@@ -1570,6 +1565,7 @@ enddef
 
 # Show a balloon with information of the variable under the mouse pointer,
 # if there is any.
+# UBA: Does this function always return '' ?
 def TermDebugBalloonExpr(): string
   if v:beval_winid != sourcewin
     return ''
@@ -1588,6 +1584,7 @@ def TermDebugBalloonExpr(): string
 enddef
 
 # Handle an error.
+# UBA: Make it a bit nicer?
 def HandleError(msg: string)
   if ignoreEvalError
     # Result of SendEval() failed, ignore.
@@ -1627,8 +1624,6 @@ def GetDisasmWindowHeight(): number
   endif
   return 0
 enddef
-
-
 
 def GotoAsmwinOrCreateIt()
   var mdf = ''
@@ -1744,7 +1739,7 @@ def GotoVariableswinOrCreateIt()
 
     # If exists, then open, otherwise create (but check if there is no
     # file/directory with the same name as nice_name)
-    if varbuf > 0 && bufexists(varbuf)
+    if bufexists(varbuf)
       exe 'buffer' .. varbuf
     elseif empty(glob(nice_name))
       varbufname = nice_name
@@ -1773,7 +1768,6 @@ def HandleCursor(msg: string)
     doauto <nomodeline> User TermdebugCursor
   endif
 
-
   var wid = win_getid()
 
   if msg =~ '^\*stopped'
@@ -1788,6 +1782,7 @@ def HandleCursor(msg: string)
     running = true
   endif
 
+  # UBA: fix
   var fname = ''
   if msg =~ 'fullname='
     fname = GetFullname(msg)
@@ -1837,7 +1832,7 @@ def HandleCursor(msg: string)
           # TODO: find existing window
           exe 'split ' .. fnameescape(fname)
           sourcewin = win_getid()
-          call InstallWinbar(0)
+          InstallWinbar(0)
         else
           exe 'edit ' .. fnameescape(fname)
         endif
@@ -1845,6 +1840,7 @@ def HandleCursor(msg: string)
           au! SwapExists
         augroup END
       endif
+      # UBA fix
       exe ":" .. lnum
       normal! zv
       sign_unplace('TermDebug', {'id': pc_id})
@@ -1856,6 +1852,7 @@ def HandleCursor(msg: string)
       endif
       setlocal signcolumn=yes
     endif
+  # UBA fix boolean expressions
   elseif !stopped || fname != ''
     sign_unplace('TermDebug', {'id': pc_id})
   endif
@@ -1868,12 +1865,15 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
   var nr = printf('%d.%d', id, subid)
   if index(BreakpointSigns, nr) == -1
     add(BreakpointSigns, nr)
+    #UBA: fix
     var hiName = ''
     if enabled == "n"
       hiName = "debugBreakpointDisabled"
     else
       hiName = "debugBreakpoint"
     endif
+
+    # UBA: Fix
     var label = ''
     if exists('g:termdebug_config')
       label = get(g:termdebug_config, 'sign', '')
@@ -1951,6 +1951,7 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
     endif
     breakpoint_locations[bploc] += [id]
 
+    # UBA
     var posMsg = ''
     if bufloaded(fname)
       PlaceSign(id, subid, entry)
@@ -1958,6 +1959,8 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
     else
       posMsg = ' in ' .. fname .. ' at line ' .. lnum .. '.'
     endif
+
+    # UBA
     var actionTaken = ''
     if !modifiedFlag
       actionTaken = 'created'
@@ -2040,7 +2043,7 @@ enddef
 
 InitHighlight()
 InitAutocmd()
-
+# Perhaps the init goes here UBA
 
 #
 #
