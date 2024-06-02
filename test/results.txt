@@ -5,3 +5,4 @@ Test_termdebug_tbreak(): pass
 FAIL: Tests in test_termdebug.vim failed with exception Skipped: gdb is not found in $PATH at command line..script /Users/ubaldot/.vim/experiments/test/runner.vim[48]../Users/ubaldot/.vim/experiments/test/test_termdebug.vim, rad 9
 FAIL: Tests in test_termdebug.vim failed with exception Skipped: gdb is not found in $PATH at command line..script /Users/ubaldot/.vim/experiments/test/runner.vim[48]../Users/ubaldot/.vim/experiments/test/test_termdebug.vim, rad 9
 FAIL: Tests in test_termdebug.vim failed with exception Skipped: gdb is not found in $PATH at command line..script /Users/ubaldot/.vim/experiments/test/runner.vim[48]../Users/ubaldot/.vim/experiments/test/test_termdebug.vim, rad 9
+FAIL: Tests in test_termdebug.vim failed with exception Skipped: gdb is not found in $PATH at command line..script /Users/ubaldot/.vim/experiments/test/runner.vim[48]../Users/ubaldot/.vim/experiments/test/test_termdebug.vim, rad 9

@@ -3,8 +3,8 @@
 # Script to run the unit-tests for the termdebug9.vim
 # Copied and adapted from Vim LSP plugin
 
-VIM_PRG=${VIMPRG:=$(which vim)}
-if [ -z "$VIMPRG" ]; then
+VIM_PRG=${VIM_PRG:=$(which vim)}
+if [ -z "$VIM_PRG" ]; then
   echo "ERROR: vim (\$VIMPRG) is not found in PATH"
   # exit 1
 fi
