@@ -1103,14 +1103,14 @@ def InstallCommands()
   if has('menu') && &mouse != ''
     InstallWinbar(0)
 
-    var popup = 1
+    var pup = 1
     if exists('g:termdebug_config')
-      popup = get(g:termdebug_config, 'popup', 1)
+      pup = get(g:termdebug_config, 'popup', 1)
     elseif exists('g:termdebug_popup')
-      popup = g:termdebug_popup
+      pup = g:termdebug_popup
     endif
 
-    if popup
+    if pup
       saved_mousemodel = &mousemodel
       &mousemodel = 'popup_setpos'
       an 1.200 PopUp.-SEP3-	<Nop>
