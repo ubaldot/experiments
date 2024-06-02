@@ -11,7 +11,7 @@ fi
 
 VIM_CMD='$VIM_PRG -u NONE -U NONE -i NONE --noplugin -N --not-a-term'
 
-# Add comma separated tests, i.e. "test_termdebug.vim, test_pippo.vim, etc"
+# Add space separated tests, i.e. "test_termdebug.vim test_pippo.vim etc"
 TESTS="test_termdebug.vim"
 
 RunTestsInFile() {
