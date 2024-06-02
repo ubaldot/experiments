@@ -37,7 +37,6 @@ RunTestsInFile() {
 
 for testfile in $TESTS
 do
-  echo "Fanculi"
   RunTestsInFile $testfile
 done
 
