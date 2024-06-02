@@ -1,8 +1,11 @@
 # Termdebug9: how to test it
 
-Verify that you have both `gcc` and `gdb` installed. Then do the following:
+Verify that you have both `gcc` and `gdb` installed. Then, you can run
+automatic tests by sourcing the script `./test/run_tests.sh`.
 
-1. Download `termdebug9.vim` script
+If you want to give it a shot manually, do the following:
+
+1. Clone the repo
 2. Run `:source termdebug9.vim`
 3. Run `:Termdebug`
 
