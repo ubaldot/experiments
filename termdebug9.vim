@@ -784,7 +784,7 @@ def EndTermDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  if bufexists(commbuf)
+  if commbuf > 0 && bufexists(commbuf)
     exe 'bwipe! ' .. commbuf
   endif
   gdbwin = 0
@@ -794,13 +794,13 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if bufexists(ptybuf)
+  if ptybuf > 0 && bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
-  if bufexists(asmbuf)
+  if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if bufexists(varbuf)
+  if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = 0
