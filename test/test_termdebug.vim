@@ -54,117 +54,117 @@ enddef
 
 import '../termdebug9.vim'
 
-# def g:Test_termdebug_basic()
-#   var bin_name = 'XTD_basic'
-#   var src_name = bin_name .. '.c'
-#   Generate_files(bin_name)
+def g:Test_termdebug_basic()
+  var bin_name = 'XTD_basic'
+  var src_name = bin_name .. '.c'
+  Generate_files(bin_name)
 
-#   edit XTD_basic.c
-#   Termdebug ./XTD_basic
-#   WaitForAssert(() => assert_equal(3, winnr('$')))
-#   var gdb_buf = winbufnr(1)
-#   wincmd b
-#   execute("Break 9")
-#   term_wait(gdb_buf)
-#   redraw!
-#   assert_equal([
-#         \ {'lnum': 9, 'id': 1014, 'name': 'debugBreakpoint1.0',
-#         \  'priority': 110, 'group': 'TermDebug'}],
-#         \ sign_getplaced('', {'group': 'TermDebug'})[0].signs)
-#   execute("Run")
-#   term_wait(gdb_buf, 400)
-#   redraw!
-#   WaitForAssert(() => assert_equal([
-#         \ {'lnum': 9, 'id': 12, 'name': 'debugPC', 'priority': 110,
-#         \  'group': 'TermDebug'},
-#         \ {'lnum': 9, 'id': 1014, 'name': 'debugBreakpoint1.0',
-#         \  'priority': 110, 'group': 'TermDebug'}],
-#         \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
+  edit XTD_basic.c
+  Termdebug ./XTD_basic
+  WaitForAssert(() => assert_equal(3, winnr('$')))
+  var gdb_buf = winbufnr(1)
+  wincmd b
+  execute("Break 9")
+  term_wait(gdb_buf)
+  redraw!
+  assert_equal([
+        \ {'lnum': 9, 'id': 1014, 'name': 'debugBreakpoint1.0',
+        \  'priority': 110, 'group': 'TermDebug'}],
+        \ sign_getplaced('', {'group': 'TermDebug'})[0].signs)
+  execute("Run")
+  term_wait(gdb_buf, 400)
+  redraw!
+  WaitForAssert(() => assert_equal([
+        \ {'lnum': 9, 'id': 12, 'name': 'debugPC', 'priority': 110,
+        \  'group': 'TermDebug'},
+        \ {'lnum': 9, 'id': 1014, 'name': 'debugBreakpoint1.0',
+        \  'priority': 110, 'group': 'TermDebug'}],
+        \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
 
-#   execute("Finish")
-#   term_wait(gdb_buf)
-#   redraw!
-#   WaitForAssert(() => assert_equal([
-#         \ {'lnum': 9, 'id': 1014, 'name': 'debugBreakpoint1.0',
-#         \  'priority': 110, 'group': 'TermDebug'},
-#         \ {'lnum': 20, 'id': 12, 'name': 'debugPC',
-#         \  'priority': 110, 'group': 'TermDebug'}],
-#         \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
-#   execute("Continue")
-#   term_wait(gdb_buf)
+  execute("Finish")
+  term_wait(gdb_buf)
+  redraw!
+  WaitForAssert(() => assert_equal([
+        \ {'lnum': 9, 'id': 1014, 'name': 'debugBreakpoint1.0',
+        \  'priority': 110, 'group': 'TermDebug'},
+        \ {'lnum': 20, 'id': 12, 'name': 'debugPC',
+        \  'priority': 110, 'group': 'TermDebug'}],
+        \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
+  execute("Continue")
+  term_wait(gdb_buf)
 
-#   var count = 2
-#   while count <= 258
-#     execute("Break")
-#     term_wait(gdb_buf)
-#     if count == 2
-#        WaitForAssert(() => assert_equal('02', sign_getdefined('debugBreakpoint2.0')[0].text))
-#     endif
-#     if count == 10
-#        WaitForAssert(() => assert_equal('0A', sign_getdefined('debugBreakpoint10.0')[0].text))
-#     endif
-#     if count == 168
-#        WaitForAssert(() => assert_equal('A8', sign_getdefined('debugBreakpoint168.0')[0].text))
-#     endif
-#     if count == 255
-#        WaitForAssert(() => assert_equal('FF', sign_getdefined('debugBreakpoint255.0')[0].text))
-#     endif
-#     if count == 256
-#        WaitForAssert(() => assert_equal('F+', sign_getdefined('debugBreakpoint256.0')[0].text))
-#     endif
-#     if count == 258
-#        WaitForAssert(() => assert_equal('F+', sign_getdefined('debugBreakpoint258.0')[0].text))
-#     endif
-#     count += 1
-#   endwhile
+  var count = 2
+  while count <= 258
+    execute("Break")
+    term_wait(gdb_buf)
+    if count == 2
+       WaitForAssert(() => assert_equal('02', sign_getdefined('debugBreakpoint2.0')[0].text))
+    endif
+    if count == 10
+       WaitForAssert(() => assert_equal('0A', sign_getdefined('debugBreakpoint10.0')[0].text))
+    endif
+    if count == 168
+       WaitForAssert(() => assert_equal('A8', sign_getdefined('debugBreakpoint168.0')[0].text))
+    endif
+    if count == 255
+       WaitForAssert(() => assert_equal('FF', sign_getdefined('debugBreakpoint255.0')[0].text))
+    endif
+    if count == 256
+       WaitForAssert(() => assert_equal('F+', sign_getdefined('debugBreakpoint256.0')[0].text))
+    endif
+    if count == 258
+       WaitForAssert(() => assert_equal('F+', sign_getdefined('debugBreakpoint258.0')[0].text))
+    endif
+    count += 1
+  endwhile
 
-#   count = 0
-#   # 60 is approx spaceBuffer * 3
-#   if winwidth(0) <= 78 + 60
-#     execute("Var")
-#     assert_equal(winnr(), winnr('$'))
-#     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
-#     count += 1
-#     execute(':bw!')
-#     execute("Asm")
-#     assert_equal(winnr(), winnr('$'))
-#     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
-#     count += 1
-#     execute(':bw!')
-#   endif
+  count = 0
+  # 60 is approx spaceBuffer * 3
+  if winwidth(0) <= 78 + 60
+    execute("Var")
+    assert_equal(winnr(), winnr('$'))
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
+    count += 1
+    execute(':bw!')
+    execute("Asm")
+    assert_equal(winnr(), winnr('$'))
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
+    count += 1
+    execute(':bw!')
+  endif
 
-#   set columns=160
-#   term_wait(gdb_buf)
-#   var winw = winwidth(0)
-#   execute("Var")
-#   if winwidth(0) < winw
-#     assert_equal(winnr(), winnr('$') - 1)
-#     redraw!
-#     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
-#     count += 1
-#     execute(':bw!')
-#   endif
-#   winw = winwidth(0)
-#   execute("Asm")
-#   if winwidth(0) < winw
-#      assert_equal(winnr(), winnr('$') - 1)
-#      assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
-#     count += 1
-#     execute(':bw!')
-#   endif
-#   set columns&
-#   term_wait(gdb_buf)
+  set columns=160
+  term_wait(gdb_buf)
+  var winw = winwidth(0)
+  execute("Var")
+  if winwidth(0) < winw
+    assert_equal(winnr(), winnr('$') - 1)
+    redraw!
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
+    count += 1
+    execute(':bw!')
+  endif
+  winw = winwidth(0)
+  execute("Asm")
+  if winwidth(0) < winw
+     assert_equal(winnr(), winnr('$') - 1)
+     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
+    count += 1
+    execute(':bw!')
+  endif
+  set columns&
+  term_wait(gdb_buf)
 
-#   wincmd t
-#   # quit Termdebug
-#   quit!
-#   redraw!
-#   WaitForAssert(() => assert_equal(1, winnr('$')))
-#   assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
+  wincmd t
+  # quit Termdebug
+  quit!
+  redraw!
+  WaitForAssert(() => assert_equal(1, winnr('$')))
+  assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
 
-#   Cleanup_files(bin_name)
-#   execute(":%bw!")
-# enddef
+  Cleanup_files(bin_name)
+  execute(":%bw!")
+enddef
 
 def g:Test_termdebug_tbreak()
   var bin_name = 'XTD_tbreak'

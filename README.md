@@ -1,7 +1,6 @@
 # Termdebug9: how to test it
 
-Verify that you have both `gcc` and `gdb` installed. Then, you can run
-automatic tests by sourcing the script `./test/run_tests.sh`.
+Automatic tests by sourcing the script `./test/run_tests.sh`.
 
 If you want to give it a shot manually, do the following:
 
