@@ -1,9 +1,8 @@
 # Termdebug9: how to test it
 
-=======
-
-> > > > > > > 15023bf (Fixed default mappings) Verify that you have both `gcc`
-> > > > > > > and `gdb` installed. Then do the following:
+Verify that you have `gdb` installed. Then either you run the tests
+automatically by sourcing `test/run_tests.sh` script or you can do the
+following:
 
 1. Download `termdebug9.vim` script
 2. Run `:source termdebug9.vim`
