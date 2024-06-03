@@ -1,0 +1,5 @@
+Test_termdebug_basic(): pass
+Test_termdebug_bufnames(): pass
+Test_termdebug_mapping(): pass
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_tbreak[46]..<SNR>3_WaitForAssert[2]..<SNR>3_WaitForCommon[10]..<lambda>27 line 1: Expected [{'lnum': 22, 'id': 12, 'name': 'debugPC', 'priority': 110, 'group': 'TermDebug'}, {'lnum': 22, 'id': 2014, 'name': 'debugBreakpoint2.0', 'priority': 110, 'group': 'TermDebug'}] but got [{'lnum': 22, 'id': 12, 'name': 'debugPC', 'priority': 110, 'group': 'TermDebug'}, {'lnum': 22, 'id': 2014, 'name': 'debugBreakpoint2.0', 'priority': 110, 'group': 'TermDebug'}, {'lnum': 23, 'id': 13, 'name': 'debugPC', 'priority': 10, 'group': 'TermDebug'}]
+Test_termdebug_tbreak(): FAIL
