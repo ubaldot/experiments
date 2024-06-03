@@ -343,7 +343,7 @@ def g:Test_termdebug_bufnames()
   WaitForAssert(() => assert_equal(1, winnr('$')))
   assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
 
-  g:termdebug_config = {}
+  unlet g:termdebug_config
   execute(":%bw!")
 
 enddef

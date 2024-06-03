@@ -43,7 +43,6 @@ if exists('g:termdebug_loaded')
 endif
 g:termdebug_loaded = true
 
-
 var way = 'terminal'
 var err = 'no errors'
 
