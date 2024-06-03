@@ -1,8 +1,4 @@
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 84: Expected ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004], ['leaf', 1000]]]]] but got ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003], ['leaf', 1000]]]]]
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 92: Expected ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1005], ['leaf', 1000]]]]] but got ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1004], ['leaf', 1000]]]]]
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 89: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003], ['leaf', 1000]]]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004], ['leaf', 1000]]]]]
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 97: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1004], ['leaf', 1000]]]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1005], ['leaf', 1000]]]]]
 Test_termdebug_basic(): FAIL
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_mapping line 14: Expected ':Evaluate<CR>' but got '<cmd>Evaluate'
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_mapping line 36: Expected ':Evaluate<CR>' but got '<cmd>Evaluate'
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_mapping line 47: Expected ':echom "K"<cr>' but got ':echom "K"<CR>'
-Test_termdebug_mapping(): FAIL
-Test_termdebug_tbreak(): pass
+Test_termdebug_mapping(): pass

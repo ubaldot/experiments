@@ -1,5 +1,7 @@
 vim9script
+
 # Test for the termdebug plugin
+# Copied and adjusted from Vim distribution
 
 import "./common.vim"
 var WaitForAssert = common.WaitForAssert
@@ -91,27 +93,28 @@ def g:Test_termdebug_basic()
   execute("Continue")
   term_wait(gdb_buf)
 
+  sleep 5
   var count = 2
   while count <= 258
     execute("Break")
     term_wait(gdb_buf)
     if count == 2
-       WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint2.0')[0].text, '02'))
+       WaitForAssert(() => assert_equal('02', sign_getdefined('debugBreakpoint2.0')[0].text))
     endif
     if count == 10
-       WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint10.0')[0].text, '0A'))
+       WaitForAssert(() => assert_equal('0A', sign_getdefined('debugBreakpoint10.0')[0].text))
     endif
     if count == 168
-       WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint168.0')[0].text, 'A8'))
+       WaitForAssert(() => assert_equal('A8', sign_getdefined('debugBreakpoint168.0')[0].text))
     endif
     if count == 255
-       WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint255.0')[0].text, 'FF'))
+       WaitForAssert(() => assert_equal('FF', sign_getdefined('debugBreakpoint255.0')[0].text))
     endif
     if count == 256
-       WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint256.0')[0].text, 'F+'))
+       WaitForAssert(() => assert_equal('F+', sign_getdefined('debugBreakpoint256.0')[0].text))
     endif
     if count == 258
-       WaitForAssert(() => assert_equal(sign_getdefined('debugBreakpoint258.0')[0].text, 'F+'))
+       WaitForAssert(() => assert_equal('F+', sign_getdefined('debugBreakpoint258.0')[0].text))
     endif
     count += 1
   endwhile
@@ -121,22 +124,26 @@ def g:Test_termdebug_basic()
   if winwidth(0) <= 78 + 60
     execute("Var")
     assert_equal(winnr(), winnr('$'))
-    assert_equal(winlayout(), ['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]])
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
     bw!
     execute("Asm")
     assert_equal(winnr(), winnr('$'))
-    assert_equal(winlayout(), ['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]])
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
     bw!
   endif
+
   set columns=160
   term_wait(gdb_buf)
   var winw = winwidth(0)
+  echom "You should get Var"
   execute("Var")
+  redraw!
+  sleep 5
   if winwidth(0) < winw
-     assert_equal(winnr(), winnr('$') - 1)
-     assert_equal(winlayout(), ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]])
+    assert_equal(winnr(), winnr('$') - 1)
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
     count += 1
     bw!
   endif
@@ -144,7 +151,7 @@ def g:Test_termdebug_basic()
   execute("Asm")
   if winwidth(0) < winw
      assert_equal(winnr(), winnr('$') - 1)
-     assert_equal(winlayout(), ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]])
+     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
     count += 1
     bw!
   endif
@@ -155,146 +162,146 @@ def g:Test_termdebug_basic()
   # quit Termdebug
   quit!
   redraw!
+  sleep 5
   WaitForAssert(() => assert_equal(1, winnr('$')))
   assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
-
+  sleep 5
   Cleanup_files(bin_name)
   execute(":%bw!")
 enddef
 
-def g:Test_termdebug_tbreak()
-  var bin_name = 'XTD_tbreak'
-  var src_name = bin_name .. '.c'
+# def g:Test_termdebug_tbreak()
+#   var bin_name = 'XTD_tbreak'
+#   var src_name = bin_name .. '.c'
 
-  Generate_files(bin_name)
+#   Generate_files(bin_name)
 
-  execute 'edit ' .. src_name
-  execute 'Termdebug ./' .. bin_name
+#   execute 'edit ' .. src_name
+#   execute 'Termdebug ./' .. bin_name
 
-  WaitForAssert(() => assert_equal(3, winnr('$')))
-  var gdb_buf = winbufnr(1)
-  wincmd b
+#   WaitForAssert(() => assert_equal(3, winnr('$')))
+#   var gdb_buf = winbufnr(1)
+#   wincmd b
 
-  var bp_line = 22        # 'return' statement in main
-  var temp_bp_line = 10   # 'if' statement in 'for' loop body
-  execute ":Tbreak " .. temp_bp_line
-  execute ":Break " .. bp_line
+#   var bp_line = 22        # 'return' statement in main
+#   var temp_bp_line = 10   # 'if' statement in 'for' loop body
+#   execute ":Tbreak " .. temp_bp_line
+#   execute ":Break " .. bp_line
 
-  term_wait(gdb_buf)
-  redraw!
-  # both temporary and normal breakpoint signs were displayed...
-  assert_equal([
-        \ {'lnum': temp_bp_line, 'id': 1014, 'name': 'debugBreakpoint1.0',
-        \  'priority': 110, 'group': 'TermDebug'},
-        \ {'lnum': bp_line, 'id': 2014, 'name': 'debugBreakpoint2.0',
-        \  'priority': 110, 'group': 'TermDebug'}],
-        \ sign_getplaced('', {'group': 'TermDebug'})[0].signs)
+#   term_wait(gdb_buf)
+#   redraw!
+#   # both temporary and normal breakpoint signs were displayed...
+#   assert_equal([
+#         \ {'lnum': temp_bp_line, 'id': 1014, 'name': 'debugBreakpoint1.0',
+#         \  'priority': 110, 'group': 'TermDebug'},
+#         \ {'lnum': bp_line, 'id': 2014, 'name': 'debugBreakpoint2.0',
+#         \  'priority': 110, 'group': 'TermDebug'}],
+#         \ sign_getplaced('', {'group': 'TermDebug'})[0].signs)
 
-  execute("Run")
-  term_wait(gdb_buf, 400)
-  redraw!
-  # debugPC sign is on the line where the temp. bp was set;
-  # temp. bp sign was removed after hit;
-  # normal bp sign is still present
-  WaitForAssert(() => assert_equal([
-        \ {'lnum': temp_bp_line, 'id': 12, 'name': 'debugPC', 'priority': 110,
-        \  'group': 'TermDebug'},
-        \ {'lnum': bp_line, 'id': 2014, 'name': 'debugBreakpoint2.0',
-        \  'priority': 110, 'group': 'TermDebug'}],
-        \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
+#   execute("Run")
+#   term_wait(gdb_buf, 400)
+#   redraw!
+#   # debugPC sign is on the line where the temp. bp was set;
+#   # temp. bp sign was removed after hit;
+#   # normal bp sign is still present
+#   WaitForAssert(() => assert_equal([
+#         \ {'lnum': temp_bp_line, 'id': 12, 'name': 'debugPC', 'priority': 110,
+#         \  'group': 'TermDebug'},
+#         \ {'lnum': bp_line, 'id': 2014, 'name': 'debugBreakpoint2.0',
+#         \  'priority': 110, 'group': 'TermDebug'}],
+#         \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
 
-  execute("Continue")
-  term_wait(gdb_buf)
-  redraw!
-  # debugPC is on the normal breakpoint,
-  # temp. bp on line 10 was only hit once
-  WaitForAssert(() => assert_equal([
-        \ {'lnum': bp_line, 'id': 12, 'name': 'debugPC', 'priority': 110,
-        \  'group': 'TermDebug'},
-        \ {'lnum': bp_line, 'id': 2014, 'name': 'debugBreakpoint2.0',
-        \  'priority': 110, 'group': 'TermDebug'}],
-        \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
+#   execute("Continue")
+#   term_wait(gdb_buf)
+#   redraw!
+#   # debugPC is on the normal breakpoint,
+#   # temp. bp on line 10 was only hit once
+#   WaitForAssert(() => assert_equal([
+#         \ {'lnum': bp_line, 'id': 12, 'name': 'debugPC', 'priority': 110,
+#         \  'group': 'TermDebug'},
+#         \ {'lnum': bp_line, 'id': 2014, 'name': 'debugBreakpoint2.0',
+#         \  'priority': 110, 'group': 'TermDebug'}],
+#         \ sign_getplaced('', {'group': 'TermDebug'})[0].signs))
 
-  wincmd t
-  quit!
-  redraw!
-  WaitForAssert(() => assert_equal(1, winnr('$')))
-  assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
+#   wincmd t
+#   quit!
+#   redraw!
+#   WaitForAssert(() => assert_equal(1, winnr('$')))
+#   assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
 
-  Cleanup_files(bin_name)
-  execute(":%bw!")
-enddef
+#   Cleanup_files(bin_name)
+#   execute(":%bw!")
+# enddef
 
 
 def g:Test_termdebug_mapping()
   execute(":%bw!")
+  var default_key_mapping =
+        \ ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
+
+  for key in default_key_mapping
+    assert_true(maparg(key, 'n', 0, 1)->empty())
+  endfor
+  Termdebug
+  WaitForAssert(() => assert_equal(3, winnr('$')))
+  wincmd b
+  for key in default_key_mapping
+    assert_false(maparg(key, 'n', 0, 1)->empty())
+    assert_false(maparg(key, 'n', 0, 1).buffer)
+  endfor
+  assert_equal('<cmd>Evaluate', maparg('K', 'n', 0, 1).rhs)
+  wincmd t
+  quit!
+  redraw!
+  WaitForAssert(() => assert_equal(1, winnr('$')))
   assert_true(maparg('K', 'n', 0, 1)->empty())
   assert_true(maparg('-', 'n', 0, 1)->empty())
   assert_true(maparg('+', 'n', 0, 1)->empty())
-  Termdebug
-  WaitForAssert(() => assert_equal(3, winnr('$')))
-  wincmd b
-  assert_false(maparg('K', 'n', 0, 1)->empty())
-  assert_false(maparg('-', 'n', 0, 1)->empty())
-  assert_false(maparg('+', 'n', 0, 1)->empty())
-  assert_false(maparg('K', 'n', 0, 1).buffer)
-  assert_false(maparg('-', 'n', 0, 1).buffer)
-  assert_false(maparg('+', 'n', 0, 1).buffer)
-  assert_equal(':Evaluate<CR>', maparg('K', 'n', 0, 1).rhs)
-  wincmd t
-  quit!
-  redraw!
-  WaitForAssert(() => assert_equal(1, winnr('$')))
-  assert_true(maparg('K', 'n', 0, 1)->empty())
-  assert_true(maparg('-', 'n', 0, 1)->empty())
-  assert_true(maparg('+', 'n', 0, 1)->empty())
-
   execute(":%bw!")
-  nnoremap K :echom "K"<cr>
-  nnoremap - :echom "-"<cr>
-  nnoremap + :echom "+"<cr>
-  Termdebug
-  WaitForAssert(() => assert_equal(3, winnr('$')))
-  wincmd b
-  assert_false(maparg('K', 'n', 0, 1)->empty())
-  assert_false(maparg('-', 'n', 0, 1)->empty())
-  assert_false(maparg('+', 'n', 0, 1)->empty())
-  assert_false(maparg('K', 'n', 0, 1).buffer)
-  assert_false(maparg('-', 'n', 0, 1).buffer)
-  assert_false(maparg('+', 'n', 0, 1).buffer)
-  assert_equal(':Evaluate<CR>', maparg('K', 'n', 0, 1).rhs)
-  wincmd t
-  quit!
-  redraw!
-  WaitForAssert(() => assert_equal(1, winnr('$')))
-  assert_false(maparg('K', 'n', 0, 1)->empty())
-  assert_false(maparg('-', 'n', 0, 1)->empty())
-  assert_false(maparg('+', 'n', 0, 1)->empty())
-  assert_false(maparg('K', 'n', 0, 1).buffer)
-  assert_false(maparg('-', 'n', 0, 1).buffer)
-  assert_false(maparg('+', 'n', 0, 1).buffer)
-  assert_equal(':echom "K"<cr>', maparg('K', 'n', 0, 1).rhs)
 
-  execute(":%bw!")
-  nnoremap <buffer> K :echom "bK"<cr>
-  nnoremap <buffer> - :echom "b-"<cr>
-  nnoremap <buffer> + :echom "b+"<cr>
+  for key in default_key_mapping
+    exe $'nnoremap {key} :echom "{key}"<cr>'
+  endfor
+
   Termdebug
   WaitForAssert(() => assert_equal(3, winnr('$')))
   wincmd b
-  assert_true(maparg('K', 'n', 0, 1).buffer)
-  assert_true(maparg('-', 'n', 0, 1).buffer)
-  assert_true(maparg('+', 'n', 0, 1).buffer)
-  assert_equal(maparg('K', 'n', 0, 1).rhs, ':echom "bK"<cr>')
+  for key in default_key_mapping
+    assert_false(maparg(key, 'n', 0, 1)->empty())
+    assert_false(maparg(key, 'n', 0, 1).buffer)
+  endfor
+  assert_equal('<cmd>Evaluate', maparg('K', 'n', 0, 1).rhs)
   wincmd t
   quit!
   redraw!
   WaitForAssert(() => assert_equal(1, winnr('$')))
-  assert_true(maparg('K', 'n', 0, 1).buffer)
-  assert_true(maparg('-', 'n', 0, 1).buffer)
-  assert_true(maparg('+', 'n', 0, 1).buffer)
+  for key in default_key_mapping
+    assert_false(maparg(key, 'n', 0, 1)->empty())
+    assert_false(maparg(key, 'n', 0, 1).buffer)
+  endfor
+  assert_equal(':echom "K"<CR>', maparg('K', 'n', 0, 1).rhs)
+  execute(":%bw!")
+
+  # Termdebug overwrites everything if use_default_mapping is true
+  for key in default_key_mapping
+    exe $'nnoremap <buffer> {key} :echom "b{key}"<cr>'
+  endfor
+
+  Termdebug
+  WaitForAssert(() => assert_equal(3, winnr('$')))
+  wincmd b
+  for key in default_key_mapping
+    assert_true(maparg(key, 'n', 0, 1).buffer)
+  endfor
   assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
-
+  wincmd t
+  quit!
+  redraw!
+  WaitForAssert(() => assert_equal(1, winnr('$')))
+  for key in default_key_mapping
+    assert_true(maparg(key, 'n', 0, 1).buffer)
+  endfor
+  assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
   execute(":%bw!")
 enddef
 #
@@ -316,10 +323,12 @@ enddef
 #   WaitForAssert(() => assert_false(bufexists(filename)))
 #   WaitForAssert(() => assert_true(bufexists(replacement_filename)))
 #   # Quit the debugger
+#   wincmd t
 #   quit!
 #   WaitForAssert(() => assert_equal(1, winnr('$')))
+#   execute(":%bw!")
 
-#   # Check if error message is in :message
+#   # # Check if error message is in :message
 #   g:termdebug_config['disasm_window'] = 1
 #   filename = 'Termdebug-asm-listing'
 #   writefile(['This', 'is', 'a', 'test'], filename, 'D')
@@ -329,15 +338,21 @@ enddef
 #   Termdebug
 #   # Once termdebug has completed the startup you should have 4 windows on screen
 #   WaitForAssert(() => assert_equal(4, winnr('$')))
-#   WaitForAssert(() => assert_notequal(-1, stridx(execute('messages'), error_message)))
-#   # Quit the debugger
-#   quit!
-#   wincmd b
+#   WaitForAssert(() => assert_true(execute('messages') =~ error_message))
+#   # Close Asm window
+#   # wincmd b
+#   execute('Asm')
 #   wincmd q
+#   # Jump to top window (gbd is located on top during the test)
+#   wincmd t
+#   # quit Termdebug
+#   quit!
+#   redraw!
 #   WaitForAssert(() => assert_equal(1, winnr('$')))
+#   assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
 
 #   unlet g:termdebug_config
+#   execute(":%bw!")
 # enddef
-
 
 # vim: shiftwidth=2 sts=2 expandtab

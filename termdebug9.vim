@@ -49,16 +49,6 @@ endif
 # endif
 # g:termdebug9_loaded = true
 
-# ==============FOR TESTS
-# g:termdebug_config = {}
-# g:termdebug_config['command'] = "arm-none-eabi-gdb"
-# g:termdebug_config['variables_window'] = 1
-# g:termdebug_config['disasm_window'] = 1
-# g:termdebug_config['timeout'] = 500
-# g:termdebug_config['wide'] = 50
-# g:termdebug_config['use_prompt'] = true
-# =========================
-
 # Script variables declaration
 
 var way: string
@@ -377,10 +367,10 @@ enddef
 def CloseBuffers()
   exe 'bwipe! ' .. ptybuf
   exe 'bwipe! ' .. commbuf
-  if bufexists(asmbuf)
+  if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if bufexists(varbuf)
+  if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = false
