@@ -908,7 +908,7 @@ def EndDebugCommon()
   if ptybuf > 0 && bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
-  if ptybuf > 0 && bufexists(asmbuf)
+  if asmbuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
   if varbuf > 0 && bufexists(varbuf)
@@ -1654,7 +1654,7 @@ def GotoAsmwinOrCreateIt()
       exe "silent file " .. asmbufname
       asmbuf = bufnr(asmbufname)
     else
-      Echoerr("You have a file/folder named " .. nice_name .. " in the current directory.
+      Echoerr("You have a file/folder named '" .. nice_name .. "' in the current directory.
           \ Termdebug may not work properly. Please exit and rename such a file/folder.")
       return
     endif
@@ -1736,7 +1736,7 @@ def GotoVariableswinOrCreateIt()
       exe "silent file " .. varbufname
       varbuf = bufnr(varbufname)
     else
-      Echoerr("You have a file/folder named " .. nice_name .. " in the current directory.
+      Echoerr("You have a file/folder named '" .. nice_name .. "' in the current directory.
           \ Termdebug may not work properly. Please exit and rename such a file/folder.")
       return
     endif

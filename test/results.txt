@@ -1,4 +1,3 @@
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 86: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003], ['leaf', 1000]]]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004], ['leaf', 1000]]]]]
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 94: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1004], ['leaf', 1000]]]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1005], ['leaf', 1000]]]]]
-Test_termdebug_basic(): FAIL
+Test_termdebug_bufnames(): pass
 Test_termdebug_mapping(): pass
+Test_termdebug_tbreak(): pass
