@@ -327,6 +327,7 @@ def StartDebug_internal(dict: dict<any>)
   endif
 
   # Override using a terminal window by setting g:termdebug_use_prompt to 1.
+  # UBA
   var use_prompt = false
   if exists('g:termdebug_config')
     use_prompt = get(g:termdebug_config, 'use_prompt', false)

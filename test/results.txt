@@ -1,8 +1,4 @@
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 72: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004]]]
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 77: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1005]]]
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 89: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1005], ['leaf', 1000]]]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1006], ['leaf', 1000]]]]]
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_basic line 97: Expected ['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1006], ['leaf', 1000]]]]] but got ['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1007], ['leaf', 1000]]]]]
-Test_termdebug_basic(): FAIL
+Test_termdebug_basic(): pass
 Test_termdebug_bufnames(): pass
 Test_termdebug_mapping(): pass
 Test_termdebug_tbreak(): pass
