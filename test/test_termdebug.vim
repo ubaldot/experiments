@@ -333,7 +333,7 @@ def g:Test_termdebug_bufnames()
   WaitForAssert(() => assert_equal(4, winnr('$')))
   WaitForAssert(() => assert_true(execute('messages') =~ error_message))
   # Close Asm window
-  execute("Asm")
+  wincmd b
   wincmd q
   # Jump to top window (gbd is located on top during the test)
   wincmd t
