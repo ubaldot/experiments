@@ -46,39 +46,35 @@ g:termdebug_loaded = true
 var way = 'terminal'
 var err = 'no errors'
 
-def InitScriptVars()
-  way = 'terminal'
-  err = 'no errors'
+var pc_id = 12
+var asm_id = 13
+var break_id = 14  # breakpoint number is added to this
+var stopped = 1
+var running = 0
 
-  pc_id = 12
-  asm_id = 13
-  break_id = 14  # breakpoint number is added to this
-  stopped = true
-  running = false
-
-  parsing_disasm_msg = 0
-  asm_lines = []
-  asm_addr = ''
+var parsing_disasm_msg = 0
+var asm_lines = []
+var asm_addr = ''
 
 # These shall be constants but cannot be initialized here
 # They indicate the buffer numbers of the main buffers used
-  gdbbuf = 0
-  varbuf = 0
-  asmbuf = 0
-  promptbuf = 0
+var gdbbuf = 0
+var varbuf = 0
+var asmbuf = 0
+var promptbuf = 0
 # This is for the "debugged program" thing
-  ptybuf = 0
-  commbuf = 0
+var ptybuf = 0
+var commbuf = 0
 
-  gdbjob = null_job
-  gdb_channel = null_channel
+var gdbjob = null_job
+var gdb_channel = null_channel
 # These changes because they relate to windows
-  pid = 0
-  gdbwin = 0
-  varwin = 0
-  asmwin = 0
-  ptywin = 0
-  sourcewin = 0
+var pid = 0
+var gdbwin = 0
+var varwin = 0
+var asmwin = 0
+var ptywin = 0
+var sourcewin = 0
 
 # Contains breakpoints that have been placed, key is a string with the GDB
 # breakpoint number.
@@ -87,38 +83,32 @@ def InitScriptVars()
 # For a breakpoint "123.4" the id is "123" and subid is "4".
 # Example, when breakpoint "44", "123", "123.1" and "123.2" exist:
 # {'44': {'0': entry}, '123': {'0': entry, '1': entry, '2': entry}}
-  breakpoints = {}
+var breakpoints = {}
 
 # Contains breakpoints by file/lnum.  The key is "fname:lnum".
 # Each entry is a list of breakpoint IDs at that position.
-  breakpoint_locations = {}
-  BreakpointSigns = []
+var breakpoint_locations = {}
+var BreakpointSigns: list<string> = []
 
 
-  evalFromBalloonExpr = false
-  evalFromBalloonExprResult = ''
-  ignoreEvalError = false
-  evalexpr = ''
+var evalFromBalloonExpr = 0
+var evalFromBalloonExprResult = ''
+var ignoreEvalError = 0
+var evalexpr = ''
 # Remember the old value of 'signcolumn' for each buffer that it's set in, so
 # that we can restore the value for all buffers.
-  signcolumn_buflist = [bufnr()]
-  save_columns = 0
+var signcolumn_buflist = [bufnr()]
+var save_columns = 0
 
-  allleft = false
+var allleft = 0
 # This was s:vertical but I cannot use vertical as variable name
-  vvertical = false
+var vvertical = 0
 
-  winbar_winids = []
-
-  existing_mappings = {}
-  default_key_mapping = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
-
-  if has('menu')
-    saved_mousemodel = &mousemodel
-  else
-    saved_mousemodel = ''
-  endif
-enddef
+var winbar_winids = []
+var plus_map_saved = {}
+var minus_map_saved = {}
+var k_map_saved = {}
+var saved_mousemodel = ''
 
 
 # Need either the +terminal feature or +channel and the prompt buffer.
@@ -137,6 +127,7 @@ else
   command -nargs=+ -complete=file -bang TermdebugCommand echoerr err
   finish
 endif
+
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
@@ -221,11 +212,6 @@ def StartDebug_internal(dict: dict<any>)
     doauto <nomodeline> User TermdebugStartPre
   endif
 
-  InitScriptVars()
-  #
-  # Uncomment this line to write logging in "debuglog".
-  # call ch_logfile('debuglog', 'w')
-
   # Assume current window is the source code window
   sourcewin = win_getid()
   var wide = 0
@@ -241,21 +227,21 @@ def StartDebug_internal(dict: dict<any>)
       &columns = wide
       # If we make the Vim window wider, use the whole left half for the debug
       # windows.
-      allleft = true
+      allleft = 1
     endif
-    vvertical = true
+    vvertical = 1
   else
-    vvertical = false
+    vvertical = 0
   endif
 
   # Override using a terminal window by setting g:termdebug_use_prompt to 1.
-  var use_prompt = false
+  var use_prompt = 0
   if exists('g:termdebug_config')
-    use_prompt = get(g:termdebug_config, 'use_prompt', false)
+    use_prompt = get(g:termdebug_config, 'use_prompt', 0)
   elseif exists('g:termdebug_use_prompt')
     use_prompt = g:termdebug_use_prompt
   endif
-  if !use_prompt && has('terminal') && !has('win32')
+  if has('terminal') && !has('win32') && !use_prompt
     way = 'terminal'
   else
     way = 'prompt'
@@ -294,19 +280,23 @@ def CloseBuffers()
   if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
-  running = false
+  running = 0
   gdbwin = 0
 enddef
 
-def IsGdbRunning(): bool
-  # UBA: check this implementation
-  var gdbproc_status = job_status(term_getjob(gdbbuf))
-  if gdbproc_status !=# 'run'
+# IsGdbRunning(): bool may be a better name?
+def CheckGdbRunning(): string
+  var gdbproc = term_getjob(gdbbuf)
+  var gdbproc_status = 'unknwown'
+  if type(gdbproc) == v:t_job
+    gdbproc_status = job_status(gdbproc)
+  endif
+  if gdbproc == v:null || gdbproc_status !=# 'run'
     Echoerr(string(GetCommand()[0]) .. ' exited unexpectedly')
     CloseBuffers()
-    return false
+    return ''
   endif
-  return true
+  return 'ok'
 enddef
 
 # Open a terminal window without a job, to run the debugged program in.
@@ -321,10 +311,6 @@ def StartDebug_term(dict: dict<any>)
   endif
   var pty = job_info(term_getjob(ptybuf))['tty_out']
   ptywin = win_getid()
-
-  setbufvar(ptybuf, '&buflisted', false)
-  setwinvar(ptywin, '&statusline', '%#StatusLine# %t(%n)%m%*' )
-
   if vvertical
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
@@ -346,11 +332,8 @@ def StartDebug_term(dict: dict<any>)
     exe 'bwipe! ' .. ptybuf
     return
   endif
-  setbufvar(commbuf, '&buflisted', false)
   var commpty = job_info(term_getjob(commbuf))['tty_out']
 
-
-  # Start the gdb buffer
   var gdb_args = get(dict, 'gdb_args', [])
   var proc_args = get(dict, 'proc_args', [])
 
@@ -383,10 +366,8 @@ def StartDebug_term(dict: dict<any>)
   echo "starting gdb with: " .. join(gdb_cmd)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
-  # UBA: for the other windows create first a split and then wincmd L. Resize
-  # also a bit
   gdbbuf = term_start(gdb_cmd, {
-        \ 'term_name': gdb_cmd[0],
+        \ 'term_name': 'gdb',
         \ 'term_finish': 'close',
         \ })
   if gdbbuf == 0
@@ -396,22 +377,13 @@ def StartDebug_term(dict: dict<any>)
   endif
   gdbwin = win_getid()
 
-  setbufvar(gdbbuf, '&buflisted', false)
-  setwinvar(gdbwin, '&statusline', '%#StatusLine# %t(%n)%m%*' )
-
   # Wait for the "startupdone" message before sending any commands.
   var counter = 0
-
   var counter_max = 300
-  if exists('g:termdebug_config') && has_key(g:termdebug_config, 'timeout')
-    counter_max = g:termdebug_config['timeout']
-  endif
-
-
   var success = false
   while success == false && counter < counter_max
-    if IsGdbRunning() == false
-      CloseBuffers()
+    if CheckGdbRunning() != 'ok'
+      # Failure. If NOK just return.
       return
     endif
 
@@ -445,9 +417,10 @@ def StartDebug_term(dict: dict<any>)
   # Wait for the response to show up, users may not notice the error and wonder
   # why the debugger doesn't work.
   counter = 0
+  counter_max = 300
   success = false
   while success == false && counter < counter_max
-    if IsGdbRunning() == false
+    if CheckGdbRunning() != 'ok'
       return
     endif
 
@@ -495,7 +468,7 @@ enddef
 
 # Open a window with a prompt buffer to run gdb in.
 def StartDebug_prompt(dict: dict<any>)
-  if vvertical == true
+  if vvertical
     vertical new
   else
     new
@@ -504,19 +477,21 @@ def StartDebug_prompt(dict: dict<any>)
   promptbuf = bufnr('')
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
-  var gdb_cmd = GetCommand()
-  # UBA: perhaps here you need g:term_config['command'][0] or similar...
-  # var gdb_name = GetCommand()[0]
-  if empty(glob(gdb_cmd[0]))
-    exe "file " .. gdb_cmd[0]
-  else
+
+  if empty(glob('gdb'))
+    file gdb
+  elseif empty(glob('Termdebug-gdb-console'))
     file Termdebug-gdb-console
+  else
+    Echoerr("You have a file/folder named 'gdb'
+          \ or 'Termdebug-gdb-console'.
+          \ Please exit and rename them because Termdebug may not work as expected.")
   endif
 
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
 
-  if vvertical == true
+  if vvertical
     # Assuming the source code window will get a signcolumn, use two more
     # columns for that, thus one less for the terminal window.
     exe ":" .. (&columns / 2 - 1) .. "wincmd |"
@@ -525,6 +500,7 @@ def StartDebug_prompt(dict: dict<any>)
   var gdb_args = get(dict, 'gdb_args', [])
   var proc_args = get(dict, 'proc_args', [])
 
+  var gdb_cmd = GetCommand()
   # Add -quiet to avoid the intro message causing a hit-enter prompt.
   gdb_cmd += ['-quiet']
   # Disable pagination, it causes everything to stop at the gdb, needs to be run early
@@ -649,7 +625,7 @@ def TermDebugSendCommand(cmd: string)
     ch_sendraw(gdb_channel, cmd .. "\n")
   else
     var do_continue = 0
-    if stopped == false
+    if !stopped
       do_continue = 1
       Stop
       sleep 10m
@@ -668,7 +644,7 @@ enddef
 def SendResumingCommand(cmd: string)
   if stopped
     # reset stopped here, it may take a bit of time before we get a response
-    stopped = false
+    stopped = 0
     ch_log('assume that program is running after this command')
     SendCommand(cmd)
   else
@@ -767,7 +743,7 @@ def DecodeMessage(quotedText: string, literal: bool): string
         #\ \ ->substitute('\\0x00', NullRepl, 'g')
         \ ->substitute('\\\\', '\', 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
-  if literal == false
+  if !literal
     return msg
           \ ->substitute('\\t', "\t", 'g')
           \ ->substitute('\\n', '', 'g')
@@ -811,7 +787,6 @@ def EndTermDebug(job: any, status: any)
   if bufexists(commbuf)
     exe 'bwipe! ' .. commbuf
   endif
-
   gdbwin = 0
   EndDebugCommon()
 enddef
@@ -828,7 +803,7 @@ def EndDebugCommon()
   if bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
-  running = false
+  running = 0
 
   # Restore 'signcolumn' in all buffers for which it was set.
   win_gotoid(sourcewin)
@@ -1072,6 +1047,7 @@ def InstallCommands()
     # using -exec-continue results in CTRL-C in the gdb window not working,
     # communicating via commbuf (= use of SendCommand) has the same result
     command Continue   SendCommand('-exec-continue')
+    # command Continue  term_sendkeys(gdbbuf, "continue\r")
   endif
 
   command -nargs=* Frame  Frame(<q-args>)
@@ -1086,31 +1062,40 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
-  var use_default_mapping = true
-  if use_default_mapping
-    # Save possibly existing mappings
-    for key in default_key_mapping
-        if !empty(mapcheck(key, "n"))
-            existing_mappings[key] = maparg(key, 'n')
-        endif
-    endfor
+  var map = 1
+  if exists('g:termdebug_config')
+    map = get(g:termdebug_config, 'map_K', 1)
+  elseif exists('g:termdebug_map_K')
+    map = g:termdebug_map_K
+  endif
 
-    # UBA may be another kind of map?
-    nnoremap <silent> B <cmd>Break<cr>
-    nnoremap <silent> T <cmd>Tbreak<cr>
-    nnoremap <silent> D <cmd>Clear<cr>
-    nnoremap <silent> C <cmd>Continue<cr>
-    nnoremap <silent> I <cmd>Step<cr>
-    nnoremap <silent> O <cmd>Next<cr>
-    nnoremap <silent> F <cmd>Finish<cr>
-    nnoremap <silent> S <cmd>Stop<cr>
-    nnoremap <silent> U <cmd>Until<cr>
-    nnoremap <silent> K <cmd>Evaluate
-    nnoremap <silent> R <cmd>Run<cr>
-    nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
+  if map
+    k_map_saved = maparg('K', 'n', 0, 1)
+    if !empty(k_map_saved) && !k_map_saved.buffer || empty(k_map_saved)
+      nnoremap K :Evaluate<CR>
+    endif
+  endif
 
-    nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-    nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+  map = 1
+  if exists('g:termdebug_config')
+    map = get(g:termdebug_config, 'map_plus', 1)
+  endif
+  if map
+    plus_map_saved = maparg('+', 'n', 0, 1)
+    if !empty(plus_map_saved) && !plus_map_saved.buffer || empty(plus_map_saved)
+      nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+    endif
+  endif
+
+  map = 1
+  if exists('g:termdebug_config')
+    map = get(g:termdebug_config, 'map_minus', 1)
+  endif
+  if map
+    minus_map_saved = maparg('-', 'n', 0, 1)
+    if !empty(minus_map_saved) && !minus_map_saved.buffer || empty(minus_map_saved)
+      nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+    endif
   endif
 
 
@@ -1180,14 +1165,33 @@ def DeleteCommands()
   delcommand Var
   delcommand Winbar
 
-
-  # Restore mappings
-  for key in default_key_mapping
-      exe "nunmap " .. key
-      if has_key(existing_mappings, key)
-          exe "nnoremap " .. key .. " " .. existing_mappings[key]
-      endif
-  endfor
+  if exists('k_map_saved')
+    if !empty(k_map_saved) && !k_map_saved.buffer
+      nunmap K
+      mapset(k_map_saved)
+    elseif empty(k_map_saved)
+      nunmap K
+    endif
+    k_map_saved = {}
+  endif
+  if exists('plus_map_saved')
+    if !empty(plus_map_saved) && !plus_map_saved.buffer
+      nunmap +
+      mapset(plus_map_saved)
+    elseif empty(plus_map_saved)
+      nunmap +
+    endif
+    plus_map_saved = {}
+  endif
+  if exists('minus_map_saved')
+    if !empty(minus_map_saved) && !minus_map_saved.buffer
+      nunmap -
+      mapset(minus_map_saved)
+    elseif empty(minus_map_saved)
+      nunmap -
+    endif
+    minus_map_saved = {}
+  endif
 
   if has('menu')
     # Remove the WinBar entries from all windows where it was added.
@@ -1217,7 +1221,7 @@ def DeleteCommands()
   endif
 
   sign_unplace('TermDebug')
-g breakpoints = {}
+  breakpoints = {}
   breakpoint_locations = {}
 
   sign_undefine('debugPC')
@@ -1231,7 +1235,7 @@ def Until(at: string)
 
   if stopped
     # reset stopped here, it may take a bit of time before we get a response
-    stopped = false
+    stopped = 0
     ch_log('assume that program is running after this command')
 
     # Use the fname:lnum format
@@ -1365,7 +1369,7 @@ enddef
 def Evaluate(range: number, arg: string)
   var expr = GetEvaluationExpression(range, arg)
   echom "expr:" .. expr
-  ignoreEvalError = false
+  ignoreEvalError = 0
   SendEval(expr)
 enddef
 
@@ -1446,10 +1450,10 @@ def HandleEvaluate(msg: string)
 
   if evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
     # Looks like a pointer, also display what it points to.
-    ignoreEvalError = true
+    ignoreEvalError = 1
     SendEval('*' .. evalexpr)
   else
-    evalFromBalloonExpr = false
+    evalFromBalloonExpr = 0
   endif
 enddef
 
@@ -1460,14 +1464,14 @@ def TermDebugBalloonExpr(): string
   if v:beval_winid != sourcewin
     return ''
   endif
-  if stopped == false
+  if !stopped
     # Only evaluate when stopped, otherwise setting a breakpoint using the
     # mouse triggers a balloon.
     return ''
   endif
-  evalFromBalloonExpr = true
+  evalFromBalloonExpr = 1
   evalFromBalloonExprResult = ''
-  ignoreEvalError = true
+  ignoreEvalError = 1
   var expr = CleanupExpr(v:beval_text)
   SendEval(expr)
   return ''
@@ -1477,8 +1481,8 @@ enddef
 def HandleError(msg: string)
   if ignoreEvalError
     # Result of SendEval() failed, ignore.
-    ignoreEvalError = false
-    evalFromBalloonExpr = true
+    ignoreEvalError = 0
+    evalFromBalloonExpr = 0
     return
   endif
   var msgVal = substitute(msg, '.*msg="\(.*\)"', '\1', '')
@@ -1540,8 +1544,6 @@ def GotoAsmwinOrCreateIt()
     setlocal bufhidden=wipe
     setlocal signcolumn=no
     setlocal modifiable
-    setlocal statusline=%#StatusLine#\ %t(%n)%m%*
-    setlocal nobuflisted
 
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
@@ -1615,9 +1617,6 @@ def GotoVariableswinOrCreateIt()
     setlocal bufhidden=wipe
     setlocal signcolumn=no
     setlocal modifiable
-    setlocal statusline=%#StatusLine#\ %t(%n)%m%*
-    setlocal nobuflisted
-
 
     if varbuf > 0 && bufexists(varbuf)
       exe 'buffer' .. varbuf
@@ -1642,23 +1641,18 @@ enddef
 # Handle stopping and running message from gdb.
 # Will update the sign that shows the current position.
 def HandleCursor(msg: string)
-  if exists('#User#TermdebugCursor')
-    doauto <nomodeline> User TermdebugCursor
-  endif
-
-
   var wid = win_getid()
 
   if msg =~ '^\*stopped'
     ch_log('program stopped')
     stopped = 1
     if msg =~ '^\*stopped,reason="exited-normally"'
-      running = false
+      running = 0
     endif
   elseif msg =~ '^\*running'
     ch_log('program running')
-    stopped = false
-    running = true
+    stopped = 0
+    running = 1
   endif
 
   var fname = ''
