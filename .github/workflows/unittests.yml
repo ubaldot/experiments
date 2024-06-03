@@ -1,0 +1,31 @@
+name: unit-tests
+on: [push, pull_request]
+jobs:
+  linux:
+    name: linux
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        vim:
+          - nightly
+          - v9.0.0000
+    steps:
+      - name: Install packages
+        run: |
+          sudo apt update
+          # install gdb
+          sudo apt install -y gdb
+      - name: Setup Vim
+        uses: rhysd/action-setup-vim@v1
+        id: vim
+        with:
+          version: ${{ matrix.vim }}
+      - name: Checkout Termdebug plugin Code
+        uses: actions/checkout@v4
+      - name: Run Tests
+        run: |
+          uname -a
+          export VIMPRG=${{ steps.vim.outputs.executable }}
+          $VIMPRG --version
+          cd test
+          source ./run_tests.sh 1
