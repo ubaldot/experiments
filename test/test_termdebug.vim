@@ -124,8 +124,8 @@ def g:Test_termdebug_basic()
     execute("Var")
     assert_equal(winnr(), winnr('$'))
     redraw!
-    sleep 10
-    echom "I am very here!"
+    echom "winlayout(): " .. string(winlayout())
+    sleep 20
     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
     execute(':bw!')
