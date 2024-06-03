@@ -10,6 +10,11 @@ jobs:
           - nightly
           - v9.0.0000
     steps:
+      - name: Install packages
+        run: |
+          sudo apt update
+          # install gdb
+          sudo apt install -y gdb
       - name: Setup Vim
         uses: rhysd/action-setup-vim@v1
         id: vim
