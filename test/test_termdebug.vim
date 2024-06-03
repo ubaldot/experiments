@@ -93,7 +93,6 @@ def g:Test_termdebug_basic()
   execute("Continue")
   term_wait(gdb_buf)
 
-  sleep 5
   var count = 2
   while count <= 258
     execute("Break")
@@ -126,12 +125,12 @@ def g:Test_termdebug_basic()
     assert_equal(winnr(), winnr('$'))
     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
-    bw!
+    execute(':bw!')
     execute("Asm")
     assert_equal(winnr(), winnr('$'))
     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
-    bw!
+    execute(':bw!')
   endif
 
   set columns=160
@@ -140,17 +139,18 @@ def g:Test_termdebug_basic()
   execute("Var")
   if winwidth(0) < winw
     assert_equal(winnr(), winnr('$') - 1)
-    # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
+    redraw!
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
     count += 1
-    bw!
+    execute(':bw!')
   endif
   winw = winwidth(0)
   execute("Asm")
   if winwidth(0) < winw
      assert_equal(winnr(), winnr('$') - 1)
-     # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
+     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
     count += 1
-    bw!
+    execute(':bw!')
   endif
   set columns&
   term_wait(gdb_buf)
@@ -159,10 +159,9 @@ def g:Test_termdebug_basic()
   # quit Termdebug
   quit!
   redraw!
-  sleep 5
   WaitForAssert(() => assert_equal(1, winnr('$')))
   assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
-  sleep 5
+
   Cleanup_files(bin_name)
   execute(":%bw!")
 enddef

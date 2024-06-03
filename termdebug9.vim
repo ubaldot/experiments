@@ -894,7 +894,7 @@ def EndTermDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  if bufexists(commbuf)
+  if commbuf > 0 && bufexists(commbuf)
     exe 'bwipe! ' .. commbuf
   endif
 
@@ -905,13 +905,13 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if bufexists(ptybuf)
+  if ptybuf > 0 && bufexists(ptybuf)
     exe 'bwipe! ' .. ptybuf
   endif
-  if bufexists(asmbuf)
+  if ptybuf > 0 && bufexists(asmbuf)
     exe 'bwipe! ' .. asmbuf
   endif
-  if bufexists(varbuf)
+  if varbuf > 0 && bufexists(varbuf)
     exe 'bwipe! ' .. varbuf
   endif
   running = false
@@ -1022,11 +1022,11 @@ def HandleDisasmMsg(msg: string)
     endif
   elseif msg !~ '^&"disassemble'
     var value = substitute(msg, '^\~\"[ ]*', '', '')
-    value = substitute(value, '^=>[ ]*', '', '')
-    value = substitute(value, '\\n\"\r$', '', '')
-    value = substitute(value, '\\n\"$', '', '')
-    value = substitute(value, '\r', '', '')
-    value = substitute(value, '\\t', ' ', 'g')
+     \ ->substitute('^=>[ ]*', '', '')
+     \ ->substitute('\\n\"\r$', '', '')
+     \ ->substitute('\\n\"$', '', '')
+     \ ->substitute('\r', '', '')
+     \ ->substitute('\\t', ' ', 'g')
 
     if value != '' || !empty(asm_lines)
       add(asm_lines, value)
