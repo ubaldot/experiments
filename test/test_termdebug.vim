@@ -314,8 +314,8 @@ def g:Test_termdebug_bufnames()
   Termdebug
   # WaitForAssert(() => assert_true(execute('messages') =~ error_message))
   WaitForAssert(() => assert_equal(1, winnr('$')))
-  wincmd t
-  quit!
+  # wincmd t
+  # quit!
   # execute(":%bw!")
   redraw!
   sleep 5
