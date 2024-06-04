@@ -119,43 +119,43 @@ def g:Test_termdebug_basic()
 
   count = 0
   # 60 is approx spaceBuffer * 3
-  # if winwidth(0) <= 78 + 60
-  #   execute("Var")
-  #   assert_equal(winnr(), winnr('$'))
-  #   # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
-  #   # UBA: OBS: For some reason at Termdebug startup winid 1002 got lost. The same
-  #   # for the other windows.
-  #   assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
-  #   count += 1
-  #   execute(':bw!')
-  #   execute("Asm")
-  #   assert_equal(winnr(), winnr('$'))
-  #   assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
-  #   count += 1
-  #   execute(':bw!')
-  # endif
+  if winwidth(0) <= 78 + 60
+    execute("Var")
+    assert_equal(winnr(), winnr('$'))
+    # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
+    # UBA: OBS: For some reason at Termdebug startup winid 1002 got lost. The same
+    # for the other windows.
+    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
+    count += 1
+    execute(':bw!')
+    execute("Asm")
+    assert_equal(winnr(), winnr('$'))
+    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
+    count += 1
+    execute(':bw!')
+  endif
 
-  # set columns=160
-  # term_wait(gdb_buf)
-  # var winw = winwidth(0)
-  # execute("Var")
-  # if winwidth(0) < winw
-  #   assert_equal(winnr(), winnr('$') - 1)
-  #   redraw!
-  #   assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
-  #   count += 1
-  #   execute(':bw!')
-  # endif
-  # winw = winwidth(0)
-  # execute("Asm")
-  # if winwidth(0) < winw
-  #    assert_equal(winnr(), winnr('$') - 1)
-  #    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
-  #   count += 1
-  #   execute(':bw!')
-  # endif
-  # set columns&
-  # term_wait(gdb_buf)
+  set columns=160
+  term_wait(gdb_buf)
+  var winw = winwidth(0)
+  execute("Var")
+  if winwidth(0) < winw
+    assert_equal(winnr(), winnr('$') - 1)
+    redraw!
+    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
+    count += 1
+    execute(':bw!')
+  endif
+  winw = winwidth(0)
+  execute("Asm")
+  if winwidth(0) < winw
+     assert_equal(winnr(), winnr('$') - 1)
+     assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
+    count += 1
+    execute(':bw!')
+  endif
+  set columns&
+  term_wait(gdb_buf)
 
   wincmd t
   # quit Termdebug

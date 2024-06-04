@@ -56,7 +56,6 @@ command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
 command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
 
 # Script variables declaration
-
 var way: string
 var err: string
 
@@ -129,7 +128,6 @@ var default_key_mapping: list<string>
 var saved_mousemodel: string
 
 def InitScriptVars()
-
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'use_prompt')
     way = g:termdebug_config['use_prompt'] ? 'prompt' : 'terminal'
   elseif exists('g:termdebug_use_prompt')
@@ -213,27 +211,28 @@ def InitScriptVars()
   endif
 enddef
 
-def SanityCheck()
-  var gdb_cmd = GetCommand()
+def SanityCheck(): bool
+  var gdb_cmd = GetCommand()[0]
+  var is_check_ok = true
   # Need either the +terminal feature or +channel and the prompt buffer.
   # The terminal feature does not work with gdb on win32.
-  if way ==# 'prompt' && !has('channel')
+  if (way ==# 'prompt') && !has('channel')
     err = 'Cannot debug, +channel feature is not supported'
   elseif way ==# 'prompt' && !exists('*prompt_setprompt')
     err = 'Cannot debug, missing prompt buffer support'
+  elseif way ==# 'prompt' && !empty(glob(gdb_cmd))
+    err = "You have a file/folder named '" .. gdb_cmd .. "' in the current directory Termdebug may not work properly. Please exit and rename such a file/folder."
   elseif gdbwin > 0
     err  = 'Terminal debugger already running, cannot run two'
-  elseif !executable(gdb_cmd[0])
-    err = 'Cannot execute debugger program "' .. gdb_cmd[0] .. '"'
-  elseif !empty(glob(gdb_cmd[0])) && way ==# 'prompt'
-    err = "You have a file/folder named '" .. gdb_cmd[0] .. "' in the current directory
-          \ Termdebug may not work properly. Please exit and rename such a file/folder."
+  elseif !executable(gdb_cmd)
+    err = 'Cannot execute debugger program "' .. gdb_cmd .. '"'
   endif
 
   if !empty(err)
     Echoerr(err)
-    finish
+    is_check_ok = false
   endif
+  return is_check_ok
 enddef
 
 # Take a breakpoint number as used by GDB and turn it into an integer.
@@ -288,7 +287,10 @@ def Echoerr(msg: string)
 enddef
 
 def StartDebug(bang: bool, ...gdb_args: list<string>)
-  SanityCheck()
+  InitScriptVars()
+  if !SanityCheck()
+    return
+  endif
   # First argument is the command to debug, second core file or process ID.
   StartDebug_internal({'gdb_args': gdb_args, 'bang': bang})
 enddef
@@ -304,7 +306,6 @@ def StartDebug_internal(dict: dict<any>)
     doauto <nomodeline> User TermdebugStartPre
   endif
 
-  InitScriptVars()
   #
   # Uncomment this line to write logging in "debuglog".
   # call ch_logfile('debuglog', 'w')

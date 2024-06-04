@@ -1,6 +1,1 @@
 Test_termdebug_basic(): pass
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_bufnames[11]..<SNR>2_WaitForAssert[2]..<SNR>2_WaitForCommon[10]..<lambda>13 line 1: Expected 1 but got 3
-Test_termdebug_bufnames(): FAIL
-Test_termdebug_mapping(): pass
-command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_tbreak line 21: Expected [{'lnum': 10, 'id': 1014, 'name': 'debugBreakpoint1.0', 'priority': 110, 'group': 'TermDebug'}, {'lnum': 22, 'id': 2014, 'name': 'debugBreakpoint2.0', 'priority': 110, 'group': 'TermDebug'}] but got []
-Test_termdebug_tbreak(): FAIL
