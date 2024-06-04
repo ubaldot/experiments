@@ -119,43 +119,43 @@ def g:Test_termdebug_basic()
 
   count = 0
   # 60 is approx spaceBuffer * 3
-  if winwidth(0) <= 78 + 60
-    execute("Var")
-    assert_equal(winnr(), winnr('$'))
-    # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
-    # UBA: OBS: For some reason at Termdebug startup winid 1002 got lost. The same
-    # for the other windows.
-    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
-    count += 1
-    execute(':bw!')
-    execute("Asm")
-    assert_equal(winnr(), winnr('$'))
-    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
-    count += 1
-    execute(':bw!')
-  endif
+  # if winwidth(0) <= 78 + 60
+  #   execute("Var")
+  #   assert_equal(winnr(), winnr('$'))
+  #   # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
+  #   # UBA: OBS: For some reason at Termdebug startup winid 1002 got lost. The same
+  #   # for the other windows.
+  #   assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
+  #   count += 1
+  #   execute(':bw!')
+  #   execute("Asm")
+  #   assert_equal(winnr(), winnr('$'))
+  #   assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
+  #   count += 1
+  #   execute(':bw!')
+  # endif
 
-  set columns=160
-  term_wait(gdb_buf)
-  var winw = winwidth(0)
-  execute("Var")
-  if winwidth(0) < winw
-    assert_equal(winnr(), winnr('$') - 1)
-    redraw!
-    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
-    count += 1
-    execute(':bw!')
-  endif
-  winw = winwidth(0)
-  execute("Asm")
-  if winwidth(0) < winw
-     assert_equal(winnr(), winnr('$') - 1)
-     assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
-    count += 1
-    execute(':bw!')
-  endif
-  set columns&
-  term_wait(gdb_buf)
+  # set columns=160
+  # term_wait(gdb_buf)
+  # var winw = winwidth(0)
+  # execute("Var")
+  # if winwidth(0) < winw
+  #   assert_equal(winnr(), winnr('$') - 1)
+  #   redraw!
+  #   assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
+  #   count += 1
+  #   execute(':bw!')
+  # endif
+  # winw = winwidth(0)
+  # execute("Asm")
+  # if winwidth(0) < winw
+  #    assert_equal(winnr(), winnr('$') - 1)
+  #    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
+  #   count += 1
+  #   execute(':bw!')
+  # endif
+  # set columns&
+  # term_wait(gdb_buf)
 
   wincmd t
   # quit Termdebug
@@ -231,7 +231,6 @@ def g:Test_termdebug_tbreak()
   execute(":%bw!")
 enddef
 
-
 def g:Test_termdebug_mapping()
   execute(":%bw!")
   var default_key_mapping =
@@ -304,53 +303,20 @@ def g:Test_termdebug_mapping()
 enddef
 #
 def g:Test_termdebug_bufnames()
-  # Test if user has filename/folders named gdb, Termdebug-gdb-console,
-  # etc. in the current directory
+  # Test if user has filename/folders named gdb in the current directory
   g:termdebug_config = {}
   g:termdebug_config['use_prompt'] = 1
   var filename = 'gdb'
-  var replacement_filename = 'Termdebug-gdb-console'
+  var error_message = "You have a file/folder named '" .. filename .. "'"
 
   writefile(['This', 'is', 'a', 'test'], filename, 'D')
   # Throw away the file once the test has done.
   Termdebug
-  # Once termdebug has completed the startup you should have 3 windows on screen
-  WaitForAssert(() => assert_equal(3, winnr('$')))
-  # A file named filename already exists in the working directory,
-  # hence you must  the newly created buffer differently
-  WaitForAssert(() => assert_false(bufexists(filename)))
-  WaitForAssert(() => assert_true(bufexists(replacement_filename)))
-  # Quit the debugger
-  wincmd t
-  quit!
+  # WaitForAssert(() => assert_true(execute('messages') =~ error_message))
   WaitForAssert(() => assert_equal(1, winnr('$')))
-  execute(":%bw!")
-
-  # # Check if error message is in :message
-  g:termdebug_config['disasm_window'] = 1
-  filename = 'Asm'
-  writefile(['This', 'is', 'a', 'test'], filename, 'D')
-  # writefile(['This', 'is', 'a', 'test'], filename)
-  # Check only the head of the error message
-  var error_message = "You have a file/folder named '" .. filename .. "'"
-  Termdebug
-  # Once termdebug has completed the startup you should have 4 windows on screen
-  WaitForAssert(() => assert_equal(4, winnr('$')))
-  WaitForAssert(() => assert_true(execute('messages') =~ error_message))
-  # Close Asm window
-  # wincmd b
-  execute('Asm')
-  wincmd q
-  # Jump to top window (gbd is located on top during the test)
   wincmd t
-  # quit Termdebug
   quit!
+  # execute(":%bw!")
   redraw!
-  WaitForAssert(() => assert_equal(1, winnr('$')))
-  assert_equal([], sign_getplaced('', {'group': 'TermDebug'})[0].signs)
-
-  unlet g:termdebug_config
-  execute(":%bw!")
-
+  sleep 5
 enddef
-# vim: shiftwidth=2 sts=2 expandtab

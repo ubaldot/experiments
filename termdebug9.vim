@@ -49,6 +49,12 @@ endif
 # endif
 # g:termdebug9_loaded = true
 
+
+# The command that starts debugging, e.g. ":Termdebug vim".
+# To end type "quit" in the gdb window.
+command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
+command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
+
 # Script variables declaration
 
 var way: string
@@ -123,8 +129,17 @@ var default_key_mapping: list<string>
 var saved_mousemodel: string
 
 def InitScriptVars()
-  way = 'terminal'
-  err = 'no errors'
+
+  if exists('g:termdebug_config') && has_key(g:termdebug_config, 'use_prompt')
+    way = g:termdebug_config['use_prompt'] ? 'prompt' : 'terminal'
+  elseif exists('g:termdebug_use_prompt')
+    way = g:termdebug_use_prompt
+  elseif has('terminal') && !has('win32')
+    way = 'terminal'
+  else
+    way = 'prompt'
+  endif
+  err = ''
 
   pc_id = 12
   asm_id = 13
@@ -139,11 +154,11 @@ def InitScriptVars()
 # These shall be constants but cannot be initialized here
 # They indicate the buffer numbers of the main buffers used
   gdbbuf = 0
-  gdbbufname = 'Termdebug-gdb-console'
+  gdbbufname = 'gdb'
   varbuf = 0
-  varbufname = 'Termdebug-variables-listing'
+  varbufname = 'Variables'
   asmbuf = 0
-  asmbufname = 'Termdebug-asm-listing'
+  asmbufname = 'Asm'
   promptbuf = 0
 # This is for the "debugged program" thing
   ptybuf = 0
@@ -198,29 +213,28 @@ def InitScriptVars()
   endif
 enddef
 
-
-# Need either the +terminal feature or +channel and the prompt buffer.
-# The terminal feature does not work with gdb on win32.
-if has('terminal') && !has('win32')
-  way = 'terminal'
-elseif has('channel') && exists('*prompt_setprompt')
-  way = 'prompt'
-else
-  if has('terminal')
-    err = 'Cannot debug, missing prompt buffer support'
-  else
+def SanityCheck()
+  var gdb_cmd = GetCommand()
+  # Need either the +terminal feature or +channel and the prompt buffer.
+  # The terminal feature does not work with gdb on win32.
+  if way ==# 'prompt' && !has('channel')
     err = 'Cannot debug, +channel feature is not supported'
+  elseif way ==# 'prompt' && !exists('*prompt_setprompt')
+    err = 'Cannot debug, missing prompt buffer support'
+  elseif gdbwin > 0
+    err  = 'Terminal debugger already running, cannot run two'
+  elseif !executable(gdb_cmd[0])
+    err = 'Cannot execute debugger program "' .. gdb_cmd[0] .. '"'
+  elseif !empty(glob(gdb_cmd[0])) && way ==# 'prompt'
+    err = "You have a file/folder named '" .. gdb_cmd[0] .. "' in the current directory
+          \ Termdebug may not work properly. Please exit and rename such a file/folder."
   endif
-  command! -nargs=* -complete=file -bang Termdebug echoerr err
-  command! -nargs=+ -complete=file -bang TermdebugCommand echoerr err
-  finish
-endif
 
-# The command that starts debugging, e.g. ":Termdebug vim".
-# To end type "quit" in the gdb window.
-command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
-command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
-
+  if !empty(err)
+    Echoerr(err)
+    finish
+  endif
+enddef
 
 # Take a breakpoint number as used by GDB and turn it into an integer.
 # The breakpoint may contain a dot: 123.4 -> 123004
@@ -274,6 +288,7 @@ def Echoerr(msg: string)
 enddef
 
 def StartDebug(bang: bool, ...gdb_args: list<string>)
+  SanityCheck()
   # First argument is the command to debug, second core file or process ID.
   StartDebug_internal({'gdb_args': gdb_args, 'bang': bang})
 enddef
@@ -283,17 +298,7 @@ def StartDebugCommand(bang: bool, ...args: list<string>)
   StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[1:], 'bang': bang})
 enddef
 
-
 def StartDebug_internal(dict: dict<any>)
-  if gdbwin > 0
-    Echoerr('Terminal debugger already running, cannot run two')
-    return
-  endif
-  var gdbcmd = GetCommand()
-  if !executable(gdbcmd[0])
-    Echoerr('Cannot execute debugger program "' .. gdbcmd[0] .. '"')
-    return
-  endif
 
   if exists('#User#TermdebugStartPre')
     doauto <nomodeline> User TermdebugStartPre
@@ -306,13 +311,14 @@ def StartDebug_internal(dict: dict<any>)
 
   # Assume current window is the source code window
   sourcewin = win_getid()
-  var wide = 0
 
+  var wide = 0
   if exists('g:termdebug_config')
     wide = get(g:termdebug_config, 'wide', 0)
   elseif exists('g:termdebug_wide')
     wide = g:termdebug_wide
   endif
+
   if wide > 0
     if &columns < wide
       save_columns = &columns
@@ -324,20 +330,6 @@ def StartDebug_internal(dict: dict<any>)
     vvertical = true
   else
     vvertical = false
-  endif
-
-  # Override using a terminal window by setting g:termdebug_use_prompt to 1.
-  # UBA
-  var use_prompt = false
-  if exists('g:termdebug_config')
-    use_prompt = get(g:termdebug_config, 'use_prompt', false)
-  elseif exists('g:termdebug_use_prompt')
-    use_prompt = g:termdebug_use_prompt
-  endif
-  if !use_prompt && has('terminal') && !has('win32')
-    way = 'terminal'
-  else
-    way = 'prompt'
   endif
 
   if way == 'prompt'
@@ -366,14 +358,13 @@ enddef
 
 # Use when debugger didn't start or ended.
 def CloseBuffers()
-  exe 'bwipe! ' .. ptybuf
-  exe 'bwipe! ' .. commbuf
-  if asmbuf > 0 && bufexists(asmbuf)
-    exe 'bwipe! ' .. asmbuf
-  endif
-  if varbuf > 0 && bufexists(varbuf)
-    exe 'bwipe! ' .. varbuf
-  endif
+  var bufnames = ['debugged program', 'gdb communication', asmbufname, varbufname]
+  for bufname in bufnames
+    if bufnr(bufname) > 0 && bufexists(bufname)
+      exe 'bwipe! ' .. bufname
+    endif
+  endfor
+
   running = false
   gdbwin = 0
 enddef
@@ -577,6 +568,10 @@ enddef
 
 # Open a window with a prompt buffer to run gdb in.
 def StartDebug_prompt(dict: dict<any>)
+  var gdb_cmd = GetCommand()
+  gdbbufname = gdb_cmd[0]
+
+
   if vvertical == true
     vertical new
   else
@@ -586,15 +581,6 @@ def StartDebug_prompt(dict: dict<any>)
   promptbuf = bufnr('')
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
-  var gdb_cmd = GetCommand()
-  # UBA: perhaps here you need g:term_config['command'][0] or similar...
-  # Overwrite gdbbufname, if you can
-  if empty(glob(gdb_cmd[0]))
-    gdbbufname = gdb_cmd[0]
-  else
-    Echoerr("You have a file/folder named " .. gdbbufname .. " in the current directory
-          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
-  endif
   exe "file " .. gdbbufname
 
   prompt_setcallback(promptbuf, function('PromptCallback'))
@@ -1643,19 +1629,15 @@ def GotoAsmwinOrCreateIt()
     setlocal statusline=%#StatusLine#\ %t(%n)%m%*
     setlocal nobuflisted
 
-    # A nicer name for the buffer
-    var nice_name = 'Asm'
-
     # If exists, then open, otherwise create (but check if there is no
-    # file/directory with the same name as nice_name)
+    # file/directory with the same name as asmbufname)
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
-    elseif empty(glob(nice_name))
-      asmbufname = nice_name
+    elseif empty(glob(asmbufname))
       exe "silent file " .. asmbufname
       asmbuf = bufnr(asmbufname)
     else
-      Echoerr("You have a file/folder named '" .. nice_name .. "' in the current directory.
+      Echoerr("You have a file/folder named '" .. asmbufname .. "' in the current directory.
           \ Termdebug may not work properly. Please exit and rename such a file/folder.")
       return
     endif
@@ -1725,19 +1707,17 @@ def GotoVariableswinOrCreateIt()
     setlocal statusline=%#StatusLine#\ %t(%n)%m%*
     setlocal nobuflisted
 
-    # A nicer name for the buffer
-    var nice_name = 'Variables'
 
     # If exists, then open, otherwise create (but check if there is no
-    # file/directory with the same name as nice_name)
+    # file/directory with the same name as varbufname)
+
     if varbuf > 0 && bufexists(varbuf)
       exe ':buffer ' .. varbuf
-    elseif empty(glob(nice_name))
-      varbufname = nice_name
+    elseif empty(glob(varbufname))
       exe "silent file " .. varbufname
       varbuf = bufnr(varbufname)
     else
-      Echoerr("You have a file/folder named '" .. nice_name .. "' in the current directory.
+      Echoerr("You have a file/folder named '" .. varbufname .. "' in the current directory.
           \ Termdebug may not work properly. Please exit and rename such a file/folder.")
       return
     endif
