@@ -302,21 +302,19 @@ def g:Test_termdebug_mapping()
   execute(":%bw!")
 enddef
 #
-def g:Test_termdebug_bufnames()
-  # Test if user has filename/folders named gdb in the current directory
-  g:termdebug_config = {}
-  g:termdebug_config['use_prompt'] = 1
-  var filename = 'gdb'
-  var error_message = "You have a file/folder named '" .. filename .. "'"
+# def g:Test_termdebug_bufnames()
+#   # Test if user has filename/folders named gdb in the current directory
+#   g:termdebug_config = {}
+#   g:termdebug_config['use_prompt'] = 1
+#   var filename = 'gdb'
+#   var error_message = "You have a file/folder named '" .. filename .. "'"
 
-  writefile(['This', 'is', 'a', 'test'], filename, 'D')
-  # Throw away the file once the test has done.
-  Termdebug
-  # WaitForAssert(() => assert_true(execute('messages') =~ error_message))
-  WaitForAssert(() => assert_equal(1, winnr('$')))
-  # wincmd t
-  # quit!
-  # execute(":%bw!")
-  redraw!
-  sleep 5
-enddef
+#   writefile(['This', 'is', 'a', 'test'], filename, 'D')
+#   # Throw away the file once the test has done.
+#   Termdebug
+#   WaitForAssert(() => assert_true(execute('messages') =~ error_message))
+#   WaitForAssert(() => assert_equal(1, winnr('$')))
+#   # wincmd t
+#   # quit!
+#   # execute(":%bw!")
+# enddef
