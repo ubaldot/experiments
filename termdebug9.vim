@@ -285,7 +285,7 @@ enddef
 
 def StartDebugCommand(bang: bool, ...args: list<string>)
   # First argument is the command to debug, rest are run arguments.
-  StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[1:], 'bang': bang})
+  StartDebug_internal({'gdb_args': [args[0]], 'proc_args': args[1 : ], 'bang': bang})
 enddef
 
 def StartDebug_internal(dict: dict<any>)
@@ -1266,11 +1266,15 @@ def DeleteCommands()
     if exists('saved_mousemodel')
       &mousemodel = saved_mousemodel
       saved_mousemodel = null_string
-      aunmenu PopUp.-SEP3-
-      aunmenu PopUp.Set\ breakpoint
-      aunmenu PopUp.Clear\ breakpoint
-      aunmenu PopUp.Run\ until
-      aunmenu PopUp.Evaluate
+      try
+        aunmenu PopUp.-SEP3-
+        aunmenu PopUp.Set\ breakpoint
+        aunmenu PopUp.Clear\ breakpoint
+        aunmenu PopUp.Run\ until
+        aunmenu PopUp.Evaluate
+      catch
+        # ignore any errors in removing the PopUp menu
+      endtry
     endif
   endif
 
@@ -1382,13 +1386,13 @@ def Frame(arg: string)
   # already parsed and allows for more formats
   if arg =~ '^\d\+$' || arg == ''
     # specify frame by number
-    SendCommand('-interpreter-exec mi "frame ' .. arg ..'"')
+    SendCommand('-interpreter-exec mi "frame ' .. arg .. '"')
   elseif arg =~ '^0x[0-9a-fA-F]\+$'
     # specify frame by stack address
-    SendCommand('-interpreter-exec mi "frame address ' .. arg ..'"')
+    SendCommand('-interpreter-exec mi "frame address ' .. arg .. '"')
   else
     # specify frame by function name
-    SendCommand('-interpreter-exec mi "frame function ' .. arg ..'"')
+    SendCommand('-interpreter-exec mi "frame function ' .. arg .. '"')
   endif
 enddef
 
