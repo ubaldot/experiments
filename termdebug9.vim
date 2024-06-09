@@ -1147,30 +1147,23 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
-  var map = 1
-  if exists('g:termdebug_config')
-    map = get(g:termdebug_config, 'map_K', 1)
-  elseif exists('g:termdebug_map_K')
-    map = g:termdebug_map_K
-  endif
 
-    # UBA may be another kind of map?
-    nnoremap <silent> B <cmd>Break<cr>
-    nnoremap <silent> T <cmd>Tbreak<cr>
-    nnoremap <silent> D <cmd>Clear<cr>
-    nnoremap <silent> C <cmd>Continue<cr>
-    nnoremap <silent> I <cmd>Step<cr>
-    nnoremap <silent> O <cmd>Next<cr>
-    nnoremap <silent> F <cmd>Finish<cr>
-    nnoremap <silent> S <cmd>Stop<cr>
-    nnoremap <silent> U <cmd>Until<cr>
-    nnoremap <silent> K <cmd>Evaluate
-    nnoremap <silent> R <cmd>Run<cr>
-    nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
+  # UBA may be another kind of map?
+  nnoremap <silent> B <cmd>Break<cr>
+  nnoremap <silent> T <cmd>Tbreak<cr>
+  nnoremap <silent> D <cmd>Clear<cr>
+  nnoremap <silent> C <cmd>Continue<cr>
+  nnoremap <silent> I <cmd>Step<cr>
+  nnoremap <silent> O <cmd>Next<cr>
+  nnoremap <silent> F <cmd>Finish<cr>
+  nnoremap <silent> S <cmd>Stop<cr>
+  nnoremap <silent> U <cmd>Until<cr>
+  nnoremap <silent> K <cmd>Evaluate
+  nnoremap <silent> R <cmd>Run<cr>
+  nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
 
-    nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-    nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
-  endif
+  nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+  nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
 
 
   if has('menu') && &mouse != ''
@@ -1263,7 +1256,7 @@ def DeleteCommands()
     win_gotoid(curwinid)
     winbar_winids = []
 
-    if exists('saved_mousemodel')
+    if saved_mousemodel != ''
       &mousemodel = saved_mousemodel
       saved_mousemodel = null_string
       try
