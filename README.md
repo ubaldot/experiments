@@ -4,7 +4,9 @@ Verify that you have `gdb` installed. Then either you run the tests
 automatically by sourcing `test/run_tests.sh` script or you can do the
 following:
 
-1. Download `termdebug9.vim` script
+If you want to give it a shot manually, do the following:
+
+1. Clone the repo
 2. Run `:source termdebug9.vim`
 3. Run `:Termdebug`
 
