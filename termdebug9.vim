@@ -37,11 +37,18 @@ vim9script
 # The communication with gdb uses GDB/MI.  See:
 # https://sourceware.org/gdb/current/onlinedocs/gdb/GDB_002fMI.html
 
-# In case this gets sourced twice.
-if exists('g:termdebug_loaded')
-  finish
+
+if !has('vim9script') ||  v:version < 900
+    # Needs Vim version 9.0 and above
+    echo "You need at least Vim 9.0"
+    finish
 endif
-g:termdebug_loaded = true
+
+# if exists('g:termdebug9_loaded')
+#     finish
+# endif
+# g:termdebug9_loaded = true
+
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
@@ -132,6 +139,11 @@ def InitScriptVars()
   endif
   err = ''
 
+  pc_id = 12
+  asm_id = 13
+  break_id = 14  # breakpoint number is added to this
+  stopped = true
+  running = false
 
   parsing_disasm_msg = 0
   asm_lines = []
@@ -294,6 +306,10 @@ def StartDebug_internal(dict: dict<any>)
     doauto <nomodeline> User TermdebugStartPre
   endif
 
+  #
+  # Uncomment this line to write logging in "debuglog".
+  # call ch_logfile('debuglog', 'w')
+
   # Assume current window is the source code window
   sourcewin = win_getid()
 
@@ -323,6 +339,7 @@ def StartDebug_internal(dict: dict<any>)
     StartDebug_term(dict)
   endif
 
+  # UBA Add eventual other windows here
   if GetDisasmWindow()
     var curwinid = win_getid()
     GotoAsmwinOrCreateIt()
@@ -441,8 +458,10 @@ def StartDebug_term(dict: dict<any>)
   echo "starting gdb with: " .. join(gdb_cmd)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
+  # UBA: for the other windows create first a split and then wincmd L. Resize
+  # also a bit
   gdbbuf = term_start(gdb_cmd, {
-        \ 'term_name': 'gdb',
+        \ 'term_name': gdbbufname,
         \ 'term_finish': 'close',
         \ })
   if gdbbuf == 0
@@ -465,8 +484,8 @@ def StartDebug_term(dict: dict<any>)
 
   var success = false
   while success == false && counter < counter_max
-    if CheckGdbRunning() != 'ok'
-      # Failure. If NOK just return.
+    if IsGdbRunning() == false
+      CloseBuffers()
       return
     endif
 
@@ -563,16 +582,7 @@ def StartDebug_prompt(dict: dict<any>)
   promptbuf = bufnr('')
   prompt_setprompt(promptbuf, 'gdb> ')
   set buftype=prompt
-
-  if empty(glob('gdb'))
-    file gdb
-  elseif empty(glob('Termdebug-gdb-console'))
-    file Termdebug-gdb-console
-  else
-    Echoerr("You have a file/folder named 'gdb'
-          \ or 'Termdebug-gdb-console'.
-          \ Please exit and rename them because Termdebug may not work as expected.")
-  endif
+  exe "file " .. gdbbufname
 
   prompt_setcallback(promptbuf, function('PromptCallback'))
   prompt_setinterrupt(promptbuf, function('PromptInterrupt'))
@@ -710,7 +720,7 @@ def TermDebugSendCommand(cmd: string)
     ch_sendraw(gdb_channel, cmd .. "\n")
   else
     var do_continue = 0
-    if !stopped
+    if stopped == false
       do_continue = 1
       Stop
       sleep 10m
@@ -810,6 +820,7 @@ enddef
 # - change \0xhh to \xhh (disabled for now)
 # - change \ooo to octal
 # - change \\ to \
+#   UBA: we may use the standard MI message formats?
 def DecodeMessage(quotedText: string, literal: bool): string
   if quotedText[0] != '"'
     Echoerr('DecodeMessage(): missing quote in ' .. quotedText)
@@ -822,6 +833,7 @@ def DecodeMessage(quotedText: string, literal: bool): string
         #\ NULL-values must be kept encoded as those break the string otherwise
         \ ->substitute('\\000', NullRepl, 'g')
         \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
+        # You could also  use ->substitute('\\\\\(\o\o\o\)', '\=nr2char(str2nr(submatch(1), 8))', "g")
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
@@ -873,6 +885,7 @@ def EndTermDebug(job: any, status: any)
   if commbuf > 0 && bufexists(commbuf)
     exe 'bwipe! ' .. commbuf
   endif
+
   gdbwin = 0
   EndDebugCommon()
 enddef
@@ -1063,7 +1076,19 @@ def CommOutput(chan: channel, message: string)
   # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Input-Syntax.html#GDB_002fMI-Input-Syntax
   # https://sourceware.org/gdb/current/onlinedocs/gdb.html/GDB_002fMI-Output-Syntax.html#GDB_002fMI-Output-Syntax
 
+
+  # UBA: for checking what the MI interface spits out
+  # echom "message_orig: " .. message
+
+  # UBA: For some reasons, now it works
   var msgs = split(message, "\r")
+
+  # UBA: attempts to remove the ^@ (null char)
+  # var msgs = split(message, '\r\%x0')
+  # UBA: the EOL for different platforms shall be tested
+
+  # UBA: for checking how the lines are split
+  # echom "msgs: " .. string(msgs)
 
   var msg = ''
   for received_msg in msgs
@@ -1147,23 +1172,32 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
+  var use_default_mapping = true
+  if use_default_mapping
+    # Save possibly existing mappings
+    for key in default_key_mapping
+        if !empty(mapcheck(key, "n"))
+            existing_mappings[key] = maparg(key, 'n')
+        endif
+    endfor
 
-  # UBA may be another kind of map?
-  nnoremap <silent> B <cmd>Break<cr>
-  nnoremap <silent> T <cmd>Tbreak<cr>
-  nnoremap <silent> D <cmd>Clear<cr>
-  nnoremap <silent> C <cmd>Continue<cr>
-  nnoremap <silent> I <cmd>Step<cr>
-  nnoremap <silent> O <cmd>Next<cr>
-  nnoremap <silent> F <cmd>Finish<cr>
-  nnoremap <silent> S <cmd>Stop<cr>
-  nnoremap <silent> U <cmd>Until<cr>
-  nnoremap <silent> K <cmd>Evaluate
-  nnoremap <silent> R <cmd>Run<cr>
-  nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
+    # UBA may be another kind of map?
+    nnoremap <silent> B <cmd>Break<cr>
+    nnoremap <silent> T <cmd>Tbreak<cr>
+    nnoremap <silent> D <cmd>Clear<cr>
+    nnoremap <silent> C <cmd>Continue<cr>
+    nnoremap <silent> I <cmd>Step<cr>
+    nnoremap <silent> O <cmd>Next<cr>
+    nnoremap <silent> F <cmd>Finish<cr>
+    nnoremap <silent> S <cmd>Stop<cr>
+    nnoremap <silent> U <cmd>Until<cr>
+    nnoremap <silent> K <cmd>Evaluate
+    nnoremap <silent> R <cmd>Run<cr>
+    nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
 
-  nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-  nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+    nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
+    nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+  endif
 
 
   if has('menu') && &mouse != ''
@@ -1177,7 +1211,6 @@ def InstallCommands()
     endif
 
     if pup
-      saved_mousemodel = &mousemodel
       &mousemodel = 'popup_setpos'
       an 1.200 PopUp.-SEP3-	<Nop>
       an 1.210 PopUp.Set\ breakpoint	:Break<CR>
@@ -1187,6 +1220,7 @@ def InstallCommands()
     endif
   endif
 
+  # &cpo = save_cpo
 enddef
 
 # Install the window toolbar in the current window.
@@ -1272,6 +1306,7 @@ def DeleteCommands()
   endif
 
   sign_unplace('TermDebug')
+  # UBA Unset script variables my not be needed since you have a Init function.
   breakpoints = {}
   breakpoint_locations = {}
 
@@ -1354,6 +1389,8 @@ def ClearBreakpoint()
       if empty(breakpoint_locations[bploc])
         remove(breakpoint_locations, bploc)
       endif
+      # UBA:
+      # id has been replaced with nr. Is it correct?
       echomsg 'Breakpoint ' .. nr .. ' cleared from line ' .. lnum .. '.'
     else
       Echoerr('Internal error trying to remove breakpoint at line ' .. lnum .. '!')
@@ -1480,7 +1517,6 @@ def HandleEvaluate(msg: string)
         \ ->substitute('\\\\', '\\', 'g')
         #\ multi-byte characters arrive in octal form, replace everything but NULL values
         \ ->substitute('\\000', NullRepl, 'g')
-        # \ ->substitute('\\\o\o\o', {-> eval('"' .. submatch(0) .. '"')}, 'g')
         \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
@@ -1602,12 +1638,13 @@ def GotoAsmwinOrCreateIt()
     # file/directory with the same name as asmbufname)
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
-    elseif empty(glob('Termdebug-asm-listing'))
-      silent file Termdebug-asm-listing
-      asmbuf = bufnr('Termdebug-asm-listing')
+    elseif empty(glob(asmbufname))
+      exe "silent file " .. asmbufname
+      asmbuf = bufnr(asmbufname)
     else
-      Echoerr("You have a file/folder named 'Termdebug-asm-listing'.
-          \ Please exit and rename it because Termdebug may not work as expected.")
+      Echoerr("You have a file/folder named '" .. asmbufname .. "' in the current directory.
+          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
+      return
     endif
 
     if mdf != 'vert' && GetDisasmWindowHeight() > 0
@@ -1680,13 +1717,14 @@ def GotoVariableswinOrCreateIt()
     # file/directory with the same name as varbufname)
 
     if varbuf > 0 && bufexists(varbuf)
-      exe 'buffer' .. varbuf
-    elseif empty(glob('Termdebug-variables-listing'))
-      silent file Termdebug-variables-listing
-      varbuf = bufnr('Termdebug-variables-listing')
+      exe ':buffer ' .. varbuf
+    elseif empty(glob(varbufname))
+      exe "silent file " .. varbufname
+      varbuf = bufnr(varbufname)
     else
-      Echoerr("You have a file/folder named 'Termdebug-variables-listing'.
-          \ Please exit and rename it because Termdebug may not work as expected.")
+      Echoerr("You have a file/folder named '" .. varbufname .. "' in the current directory.
+          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
+      return
     endif
 
     if mdf != 'vert' && GetVariablesWindowHeight() > 0
@@ -1862,6 +1900,7 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
     var [id, subid; _] = map(split(nr .. '.0', '\.'), 'str2nr(v:val) + 0')
     # var [id, subid; _] = map(split(nr .. '.0', '\.'), 'v:val + 0')
     var enabled = substitute(mm, '.*enabled="\([yn]\)".*', '\1', '')
+    # CreateBreakpoint(str2nr(id), str2nr(subid), enabled)
     CreateBreakpoint(id, subid, enabled)
 
     var entries = {}
@@ -1877,6 +1916,7 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
       entries[subid] = entry
     endif
 
+    # var lnum = substitute(mm, '.*line="\([^"]*\)".*', '\1', '')
     var lnum = str2nr(substitute(mm, '.*line="\([^"]*\)".*', '\1', ''))
     entry['fname'] = fname
     entry['lnum'] = lnum
@@ -1921,6 +1961,8 @@ enddef
 # Handle deleting a breakpoint
 # Will remove the sign that shows the breakpoint
 def HandleBreakpointDelete(msg: string)
+  # UBA CHECK THIS: why +0 at the end? Is that a sort of ASCII conversion?
+  # var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
   var id = substitute(msg, '.*id="\([0-9]*\)\".*', '\1', '')
   if empty(id)
     return
@@ -1941,6 +1983,8 @@ enddef
 # Handle the debugged program starting to run.
 # Will store the process ID in pid
 def HandleProgramRun(msg: string)
+  # UBA: ??? Why + 0?
+  # var nr = substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', '') + 0
   var nr = str2nr(substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', ''))
   if nr == 0
     return
@@ -1975,7 +2019,7 @@ enddef
 
 InitHighlight()
 InitAutocmd()
-
+# Perhaps the init goes here UBA
 
 #
 #
