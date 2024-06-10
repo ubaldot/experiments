@@ -45,16 +45,16 @@ if !has('vim9script') ||  v:version < 900
     finish
 endif
 
-# if exists('g:termdebug9_loaded')
-#     finish
-# endif
-# g:termdebug9_loaded = true
+if exists('g:termdebug_loaded')
+    finish
+endif
+g:termdebug_loaded = true
 
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
-command! -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
-command! -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
+command -nargs=* -complete=file -bang Termdebug StartDebug(<bang>0, <f-args>)
+command -nargs=+ -complete=file -bang TermdebugCommand StartDebugCommand(<bang>0, <f-args>)
 
 # Script variables declaration
 var way: string

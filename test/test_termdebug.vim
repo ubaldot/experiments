@@ -315,11 +315,13 @@ def g:Test_termdebug_sanity_check()
     error_message = "You have a file/folder named '" .. filename .. "'"
 
     # Throw away the file once the test has done (....'D')
-    writefile(['This', 'is', 'a', 'test'], filename, 'D')
+    # writefile(['This', 'is', 'a', 'test'], filename, 'D')
+    writefile(['This', 'is', 'a', 'test'], filename)
     Termdebug
     WaitForAssert(() => assert_true(execute('messages') =~ error_message))
     WaitForAssert(() => assert_equal(1, winnr('$')))
 
+    delete(filename)
     remove(g:termdebug_config, key)
   endfor
   #
