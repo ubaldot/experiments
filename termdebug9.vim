@@ -72,16 +72,16 @@ var asm_addr: string
 
 # These shall be constants but cannot be initialized here
 # They indicate the buffer numbers of the main buffers used
-var gdbbuf: number
+var gdbbufnr: number
 var gdbbufname: string
-var varbuf: number
+var varbufnr: number
 var varbufname: string
-var asmbuf: number
+var asmbufnr: number
 var asmbufname: string
 var promptbuf: number
 # This is for the "debugged program" thing
-var ptybuf: number
-var commbuf: number
+var ptybufnr: number
+var commbufnr: number
 
 var gdbjob: job
 var gdb_channel: channel
@@ -106,7 +106,6 @@ var breakpoints: dict<any>
 # Each entry is a list of breakpoint IDs at that position.
 var breakpoint_locations: dict<any>
 var BreakpointSigns: list<string>
-
 
 var evalFromBalloonExpr: bool
 var evalFromBalloonExprResult: string
@@ -150,18 +149,17 @@ def InitScriptVars()
   asm_lines = []
   asm_addr = ''
 
-  # These shall be constants but cannot be initialized here
   # They indicate the buffer numbers of the main buffers used
-  gdbbuf = 0
+  gdbbufnr = 0
   gdbbufname = 'gdb'
-  varbuf = 0
+  varbufnr = 0
   varbufname = 'Variables'
-  asmbuf = 0
+  asmbufnr = 0
   asmbufname = 'Asm'
   promptbuf = 0
   # This is for the "debugged program" thing
-  ptybuf = 0
-  commbuf = 0
+  ptybufnr = 0
+  commbufnr = 0
 
   gdbjob = null_job
   gdb_channel = null_channel
@@ -377,7 +375,7 @@ enddef
 
 def IsGdbRunning(): bool
   # UBA: check this implementation
-  var gdbproc_status = job_status(term_getjob(gdbbuf))
+  var gdbproc_status = job_status(term_getjob(gdbbufnr))
   if gdbproc_status !=# 'run'
     Echoerr(string(GetCommand()[0]) .. ' exited unexpectedly')
     CloseBuffers()
@@ -388,18 +386,18 @@ enddef
 
 # Open a terminal window without a job, to run the debugged program in.
 def StartDebug_term(dict: dict<any>)
-  ptybuf = term_start('NONE', {
+  ptybufnr = term_start('NONE', {
         \ 'term_name': 'debugged program',
         \ 'vertical': vvertical,
         \ })
-  if ptybuf == 0
+  if ptybufnr == 0
     Echoerr('Failed to open the program terminal window')
     return
   endif
-  var pty = job_info(term_getjob(ptybuf))['tty_out']
+  var pty = job_info(term_getjob(ptybufnr))['tty_out']
   ptywin = win_getid()
 
-  setbufvar(ptybuf, '&buflisted', false)
+  setbufvar(ptybufnr, '&buflisted', false)
   setwinvar(ptywin, '&statusline', '%#StatusLine# %t(%n)%m%*' )
 
   if vvertical
@@ -413,18 +411,18 @@ def StartDebug_term(dict: dict<any>)
   endif
 
   # Create a hidden terminal window to communicate with gdb
-  commbuf = term_start('NONE', {
+  commbufnr = term_start('NONE', {
         \ 'term_name': 'gdb communication',
         \ 'out_cb': function('CommOutput'),
         \ 'hidden': 1,
         \ })
-  if commbuf == 0
+  if commbufnr == 0
     Echoerr('Failed to open the communication terminal window')
-    exe 'bwipe! ' .. ptybuf
+    exe 'bwipe! ' .. ptybufnr
     return
   endif
-  setbufvar(commbuf, '&buflisted', false)
-  var commpty = job_info(term_getjob(commbuf))['tty_out']
+  setbufvar(commbufnr, '&buflisted', false)
+  var commpty = job_info(term_getjob(commbufnr))['tty_out']
 
   # Start the gdb buffer
   var gdb_args = get(dict, 'gdb_args', [])
@@ -461,18 +459,18 @@ def StartDebug_term(dict: dict<any>)
   echo "starting gdb with: " .. join(gdb_cmd)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
-  gdbbuf = term_start(gdb_cmd, {
+  gdbbufnr = term_start(gdb_cmd, {
         \ 'term_name': gdbbufname,
         \ 'term_finish': 'close',
         \ })
-  if gdbbuf == 0
+  if gdbbufnr == 0
     Echoerr('Failed to open the gdb terminal window')
     CloseBuffers()
     return
   endif
   gdbwin = win_getid()
 
-  setbufvar(gdbbuf, '&buflisted', false)
+  setbufvar(gdbbufnr, '&buflisted', false)
   setwinvar(gdbwin, '&statusline', '%#StatusLine# %t(%n)%m%*' )
 
   # Wait for the "startupdone" message before sending any commands.
@@ -491,7 +489,7 @@ def StartDebug_term(dict: dict<any>)
     endif
 
     for lnum in range(1, 200)
-      if term_getline(gdbbuf, lnum) =~ 'startupdone'
+      if term_getline(gdbbufnr, lnum) =~ 'startupdone'
         success = true
       endif
     endfor
@@ -510,12 +508,12 @@ def StartDebug_term(dict: dict<any>)
   # ---- gdb started. Next, let's set the MI interface. ---
   # Set arguments to be run.
   if len(proc_args)
-    term_sendkeys(gdbbuf, 'server set args ' .. join(proc_args) .. "\r")
+    term_sendkeys(gdbbufnr, 'server set args ' .. join(proc_args) .. "\r")
   endif
 
   # Connect gdb to the communication pty, using the GDB/MI interface.
   # Prefix "server" to avoid adding this to the history.
-  term_sendkeys(gdbbuf, 'server new-ui mi ' .. commpty .. "\r")
+  term_sendkeys(gdbbufnr, 'server new-ui mi ' .. commpty .. "\r")
 
   # Wait for the response to show up, users may not notice the error and wonder
   # why the debugger doesn't work.
@@ -528,8 +526,8 @@ def StartDebug_term(dict: dict<any>)
 
     var response = ''
     for lnum in range(1, 200)
-      var line1 = term_getline(gdbbuf, lnum)
-      var line2 = term_getline(gdbbuf, lnum + 1)
+      var line1 = term_getline(gdbbufnr, lnum)
+      var line2 = term_getline(gdbbufnr, lnum + 1)
       if line1 =~ 'new-ui mi '
         # response can be in the same line or the next line
         response = line1 .. line2
@@ -560,7 +558,7 @@ def StartDebug_term(dict: dict<any>)
     return
   endif
 
-  job_setoptions(term_getjob(gdbbuf), {'exit_cb': function('EndTermDebug')})
+  job_setoptions(term_getjob(gdbbufnr), {'exit_cb': function('EndTermDebug')})
 
   # Set the filetype, this can be used to add mappings.
   set filetype=termdebug
@@ -627,23 +625,23 @@ def StartDebug_prompt(dict: dict<any>)
   set modified
   gdb_channel = job_getchannel(gdbjob)
 
-  ptybuf = 0
+  ptybufnr = 0
   if has('win32')
     # MS-Windows: run in a new console window for maximum compatibility
     SendCommand('set new-console on')
   elseif has('terminal')
     # Unix: Run the debugged program in a terminal window.  Open it below the
     # gdb window.
-    belowright ptybuf = term_start('NONE', {
+    belowright ptybufnr = term_start('NONE', {
           \ 'term_name': 'debugged program',
           \ })
-    if ptybuf == 0
+    if ptybufnr == 0
       Echoerr('Failed to open the program terminal window')
       job_stop(gdbjob)
       return
     endif
     ptywin = win_getid()
-    var pty = job_info(term_getjob(ptybuf))['tty_out']
+    var pty = job_info(term_getjob(ptybufnr))['tty_out']
     SendCommand('tty ' .. pty)
 
     # Since GDB runs in a prompt window, the environment has not been set to
@@ -711,7 +709,7 @@ def SendCommand(cmd: string)
   if way == 'prompt'
     ch_sendraw(gdb_channel, cmd .. "\n")
   else
-    term_sendkeys(commbuf, cmd .. "\r")
+    term_sendkeys(commbufnr, cmd .. "\r")
   endif
 enddef
 
@@ -727,7 +725,7 @@ def TermDebugSendCommand(cmd: string)
       sleep 10m
     endif
     # TODO: should we prepend CTRL-U to clear the command?
-    term_sendkeys(gdbbuf, cmd .. "\r")
+    term_sendkeys(gdbbufnr, cmd .. "\r")
     if do_continue
       Continue
     endif
@@ -883,8 +881,8 @@ def EndTermDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  if commbuf > 0 && bufexists(commbuf)
-    exe 'bwipe! ' .. commbuf
+  if commbufnr > 0 && bufexists(commbufnr)
+    exe 'bwipe! ' .. commbufnr
   endif
 
   gdbwin = 0
@@ -894,14 +892,14 @@ enddef
 def EndDebugCommon()
   var curwinid = win_getid()
 
-  if ptybuf > 0 && bufexists(ptybuf)
-    exe 'bwipe! ' .. ptybuf
+  if ptybufnr > 0 && bufexists(ptybufnr)
+    exe 'bwipe! ' .. ptybufnr
   endif
-  if asmbuf > 0 && bufexists(asmbuf)
-    exe 'bwipe! ' .. asmbuf
+  if asmbufnr > 0 && bufexists(asmbufnr)
+    exe 'bwipe! ' .. asmbufnr
   endif
-  if varbuf > 0 && bufexists(varbuf)
-    exe 'bwipe! ' .. varbuf
+  if varbufnr > 0 && bufexists(varbufnr)
+    exe 'bwipe! ' .. varbufnr
   endif
   running = false
 
@@ -1156,7 +1154,7 @@ def InstallCommands()
   else
     command Stop  SendCommand('-exec-interrupt')
     # using -exec-continue results in CTRL-C in the gdb window not working,
-    # communicating via commbuf (= use of SendCommand) has the same result
+    # communicating via commbufnr (= use of SendCommand) has the same result
     command Continue   SendCommand('-exec-continue')
   endif
 
@@ -1633,11 +1631,11 @@ def GotoAsmwinOrCreateIt()
     setlocal nobuflisted
 
     # If exists, then open, otherwise create
-    if asmbuf > 0 && bufexists(asmbuf)
-      exe 'buffer' .. asmbuf
+    if asmbufnr > 0 && bufexists(asmbufnr)
+      exe 'buffer' .. asmbufnr
     else
       exe "silent file " .. asmbufname
-      asmbuf = bufnr(asmbufname)
+      asmbufnr = bufnr(asmbufname)
     endif
 
     if mdf != 'vert' && GetDisasmWindowHeight() > 0
@@ -1707,11 +1705,11 @@ def GotoVariableswinOrCreateIt()
 
 
     # If exists, then open, otherwise create
-    if varbuf > 0 && bufexists(varbuf)
-      exe ':buffer ' .. varbuf
+    if varbufnr > 0 && bufexists(varbufnr)
+      exe ':buffer ' .. varbufnr
     else
       exe "silent file " .. varbufname
-      varbuf = bufnr(varbufname)
+      varbufnr = bufnr(varbufname)
     endif
 
     if mdf != 'vert' && GetVariablesWindowHeight() > 0
