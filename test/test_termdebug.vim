@@ -239,6 +239,9 @@ def g:Test_termdebug_mapping()
   for key in default_key_mapping
     assert_true(maparg(key, 'n', 0, 1)->empty())
   endfor
+
+  g:termdebug_config = {}
+  g:termdebug_config['use_default_mappings'] = true
   Termdebug
   WaitForAssert(() => assert_equal(3, winnr('$')))
   wincmd b
@@ -300,6 +303,8 @@ def g:Test_termdebug_mapping()
   endfor
   assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
   execute(":%bw!")
+
+  unlet g:termdebug_config
 enddef
 #
 def g:Test_termdebug_sanity_check()

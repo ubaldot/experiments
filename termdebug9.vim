@@ -123,7 +123,7 @@ var vvertical: bool
 var winbar_winids: list<number>
 
 var existing_mappings: dict<any>
-var default_key_mapping: list<string>
+var default_key_mappings: list<string>
 
 var saved_mousemodel: string
 
@@ -201,7 +201,7 @@ def InitScriptVars()
   winbar_winids = []
 
   existing_mappings = {}
-  default_key_mapping = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
+  default_key_mappings = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
 
   if has('menu')
     saved_mousemodel = &mousemodel
@@ -1170,10 +1170,9 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
-  var use_default_mapping = true
-  if use_default_mapping
+  if exists('g:termdebug_config') && has_key(g:termdebug_config, 'use_default_mappings') && g:termdebug_config['use_default_mappings'] == true
     # Save possibly existing mappings
-    for key in default_key_mapping
+    for key in default_key_mappings
         if !empty(mapcheck(key, "n"))
             existing_mappings[key] = maparg(key, 'n')
         endif
@@ -1265,12 +1264,14 @@ def DeleteCommands()
   delcommand Winbar
 
   # Restore mappings
-  for key in default_key_mapping
-      exe "nunmap " .. key
-      if has_key(existing_mappings, key)
-          exe "nnoremap " .. key .. " " .. existing_mappings[key]
-      endif
-  endfor
+  if exists('g:termdebug_config') && has_key(g:termdebug_config, 'use_default_mappings') && g:termdebug_config['use_default_mappings'] == true
+    for key in default_key_mappings
+        exe "nunmap " .. key
+        if has_key(existing_mappings, key)
+            exe "nnoremap " .. key .. " " .. existing_mappings[key]
+        endif
+    endfor
+  endif
 
   if has('menu')
     # Remove the WinBar entries from all windows where it was added.
