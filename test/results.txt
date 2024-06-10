@@ -1,4 +1,4 @@
 Test_termdebug_basic(): pass
-Test_termdebug_bufnames(): pass
 Test_termdebug_mapping(): pass
+Test_termdebug_sanity_check(): pass
 Test_termdebug_tbreak(): pass

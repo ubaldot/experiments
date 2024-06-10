@@ -302,18 +302,26 @@ def g:Test_termdebug_mapping()
   execute(":%bw!")
 enddef
 #
-def g:Test_termdebug_bufnames()
-  # Test if user has filename/folders named gdb in the current directory
+def g:Test_termdebug_sanity_check()
+  # Test if user has filename/folders with wrong names
   g:termdebug_config = {}
-  g:termdebug_config['use_prompt'] = 1
-  var filename = 'gdb'
-  var error_message = "You have a file/folder named '" .. filename .. "'"
+  var filename = null_string
+  var error_message = null_string
+  var dict = {'disasm_window': 'Asm', 'use_prompt': 'gdb', 'variables_window': 'Variables'}
 
-  # Throw away the file once the test has done.
-  writefile(['This', 'is', 'a', 'test'], filename, 'D')
-  Termdebug
-  WaitForAssert(() => assert_true(execute('messages') =~ error_message))
-  WaitForAssert(() => assert_equal(1, winnr('$')))
+  for key in keys(dict)
+    filename = dict[key]
+    g:termdebug_config[key] = 1
+    error_message = "You have a file/folder named '" .. filename .. "'"
+
+    # Throw away the file once the test has done (....'D')
+    writefile(['This', 'is', 'a', 'test'], filename, 'D')
+    Termdebug
+    WaitForAssert(() => assert_true(execute('messages') =~ error_message))
+    WaitForAssert(() => assert_equal(1, winnr('$')))
+
+    remove(g:termdebug_config, key)
+  endfor
   #
   unlet g:termdebug_config
 enddef

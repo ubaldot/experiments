@@ -223,6 +223,10 @@ def SanityCheck(): bool
     err = 'Cannot debug, missing prompt buffer support'
   elseif way ==# 'prompt' && !empty(glob(gdb_cmd))
     err = "You have a file/folder named '" .. gdb_cmd .. "' in the current directory Termdebug may not work properly. Please exit and rename such a file/folder."
+  elseif !empty(glob(asmbufname))
+    err = "You have a file/folder named '" .. asmbufname .. "' in the current directory Termdebug may not work properly. Please exit and rename such a file/folder."
+  elseif !empty(glob(varbufname))
+    err = "You have a file/folder named '" .. varbufname .. "' in the current directory Termdebug may not work properly. Please exit and rename such a file/folder."
   elseif gdbwin > 0
     err  = 'Terminal debugger already running, cannot run two'
   elseif !executable(gdb_cmd)
@@ -340,7 +344,6 @@ def StartDebug_internal(dict: dict<any>)
     StartDebug_term(dict)
   endif
 
-  # UBA Add eventual other windows here
   if GetDisasmWindow()
     var curwinid = win_getid()
     GotoAsmwinOrCreateIt()
@@ -362,7 +365,8 @@ enddef
 def CloseBuffers()
   var bufnames = ['debugged program', 'gdb communication', asmbufname, varbufname]
   for bufname in bufnames
-    if bufnr(bufname) > 0 && bufexists(bufname)
+    if bufnr(bufname) > 0 && bufexists(bufnr(bufname))
+      echom bufname
       exe 'bwipe! ' .. bufname
     endif
   endfor
@@ -428,9 +432,7 @@ def StartDebug_term(dict: dict<any>)
 
   var gdb_cmd = GetCommand()
 
-  if empty(glob(gdb_cmd[0]))
-    gdbbufname = gdb_cmd[0]
-  endif
+  gdbbufname = gdb_cmd[0]
 
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'command_add_args')
     gdb_cmd = g:termdebug_config.command_add_args(gdb_cmd, pty)
@@ -1630,17 +1632,12 @@ def GotoAsmwinOrCreateIt()
     setlocal statusline=%#StatusLine#\ %t(%n)%m%*
     setlocal nobuflisted
 
-    # If exists, then open, otherwise create (but check if there is no
-    # file/directory with the same name as asmbufname)
+    # If exists, then open, otherwise create
     if asmbuf > 0 && bufexists(asmbuf)
       exe 'buffer' .. asmbuf
-    elseif empty(glob(asmbufname))
+    else
       exe "silent file " .. asmbufname
       asmbuf = bufnr(asmbufname)
-    else
-      Echoerr("You have a file/folder named '" .. asmbufname .. "' in the current directory.
-          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
-      return
     endif
 
     if mdf != 'vert' && GetDisasmWindowHeight() > 0
@@ -1709,18 +1706,12 @@ def GotoVariableswinOrCreateIt()
     setlocal nobuflisted
 
 
-    # If exists, then open, otherwise create (but check if there is no
-    # file/directory with the same name as varbufname)
-
+    # If exists, then open, otherwise create
     if varbuf > 0 && bufexists(varbuf)
       exe ':buffer ' .. varbuf
-    elseif empty(glob(varbufname))
+    else
       exe "silent file " .. varbufname
       varbuf = bufnr(varbufname)
-    else
-      Echoerr("You have a file/folder named '" .. varbufname .. "' in the current directory.
-          \ Termdebug may not work properly. Please exit and rename such a file/folder.")
-      return
     endif
 
     if mdf != 'vert' && GetVariablesWindowHeight() > 0
