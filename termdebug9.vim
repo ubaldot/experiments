@@ -4,7 +4,8 @@ vim9script
 
 # Author: Bram Moolenaar
 # Copyright: Vim license applies, see ":help license"
-# Last Change: 2023 Nov 02
+# Last Change: 2024 Jun 03
+# Converted to Vim9: Ubaldo Tiberi <ubaldo.tiberi@gmail.com>
 
 # WORK IN PROGRESS - The basics works stable, more to come
 # Note: In general you need at least GDB 7.12 because this provides the
@@ -149,8 +150,8 @@ def InitScriptVars()
   asm_lines = []
   asm_addr = ''
 
-# These shall be constants but cannot be initialized here
-# They indicate the buffer numbers of the main buffers used
+  # These shall be constants but cannot be initialized here
+  # They indicate the buffer numbers of the main buffers used
   gdbbuf = 0
   gdbbufname = 'gdb'
   varbuf = 0
@@ -158,13 +159,13 @@ def InitScriptVars()
   asmbuf = 0
   asmbufname = 'Asm'
   promptbuf = 0
-# This is for the "debugged program" thing
+  # This is for the "debugged program" thing
   ptybuf = 0
   commbuf = 0
 
   gdbjob = null_job
   gdb_channel = null_channel
-# These changes because they relate to windows
+  # These changes because they relate to windows
   pid = 0
   gdbwin = 0
   varwin = 0
@@ -172,31 +173,31 @@ def InitScriptVars()
   ptywin = 0
   sourcewin = 0
 
-# Contains breakpoints that have been placed, key is a string with the GDB
-# breakpoint number.
-# Each entry is a dict, containing the sub-breakpoints.  Key is the subid.
-# For a breakpoint that is just a number the subid is zero.
-# For a breakpoint "123.4" the id is "123" and subid is "4".
-# Example, when breakpoint "44", "123", "123.1" and "123.2" exist:
-# {'44': {'0': entry}, '123': {'0': entry, '1': entry, '2': entry}}
+  # Contains breakpoints that have been placed, key is a string with the GDB
+  # breakpoint number.
+  # Each entry is a dict, containing the sub-breakpoints.  Key is the subid.
+  # For a breakpoint that is just a number the subid is zero.
+  # For a breakpoint "123.4" the id is "123" and subid is "4".
+  # Example, when breakpoint "44", "123", "123.1" and "123.2" exist:
+  # {'44': {'0': entry}, '123': {'0': entry, '1': entry, '2': entry}}
   breakpoints = {}
 
-# Contains breakpoints by file/lnum.  The key is "fname:lnum".
-# Each entry is a list of breakpoint IDs at that position.
+  # Contains breakpoints by file/lnum.  The key is "fname:lnum".
+  # Each entry is a list of breakpoint IDs at that position.
   breakpoint_locations = {}
   BreakpointSigns = []
 
   evalFromBalloonExpr = false
-  evalFromBalloonExprResult = ''
+  evalFromBalloonExprResult = null_string
   ignoreEvalError = false
-  evalexpr = ''
-# Remember the old value of 'signcolumn' for each buffer that it's set in, so
-# that we can restore the value for all buffers.
+  evalexpr = null_string
+  # Remember the old value of 'signcolumn' for each buffer that it's set in, so
+  # that we can restore the value for all buffers.
   signcolumn_buflist = [bufnr()]
   save_columns = 0
 
   allleft = false
-# This was s:vertical but I cannot use vertical as variable name
+  # This was s:vertical but I cannot use vertical as variable name
   vvertical = false
 
   winbar_winids = []
@@ -207,7 +208,7 @@ def InitScriptVars()
   if has('menu')
     saved_mousemodel = &mousemodel
   else
-    saved_mousemodel = ''
+    saved_mousemodel = null_string
   endif
 enddef
 
@@ -458,8 +459,6 @@ def StartDebug_term(dict: dict<any>)
   echo "starting gdb with: " .. join(gdb_cmd)
 
   ch_log('executing "' .. join(gdb_cmd) .. '"')
-  # UBA: for the other windows create first a split and then wincmd L. Resize
-  # also a bit
   gdbbuf = term_start(gdb_cmd, {
         \ 'term_name': gdbbufname,
         \ 'term_finish': 'close',
@@ -790,7 +789,7 @@ def GdbOutCallback(channel: channel, text: string)
   var decoded_text = ''
   if text =~ '^\^error,msg='
     decoded_text = DecodeMessage(text[11 : ], false)
-    if exists('evalexpr') && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
+    if evalexpr isnot null_string && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
       # Silently drop evaluation errors.
       evalexpr = null_string
       return
@@ -1080,7 +1079,6 @@ def CommOutput(chan: channel, message: string)
   # UBA: for checking what the MI interface spits out
   # echom "message_orig: " .. message
 
-  # UBA: For some reasons, now it works
   var msgs = split(message, "\r")
 
   # UBA: attempts to remove the ^@ (null char)
@@ -1290,7 +1288,7 @@ def DeleteCommands()
     win_gotoid(curwinid)
     winbar_winids = []
 
-    if saved_mousemodel != ''
+    if saved_mousemodel isnot null_string
       &mousemodel = saved_mousemodel
       saved_mousemodel = null_string
       try
@@ -1389,8 +1387,6 @@ def ClearBreakpoint()
       if empty(breakpoint_locations[bploc])
         remove(breakpoint_locations, bploc)
       endif
-      # UBA:
-      # id has been replaced with nr. Is it correct?
       echomsg 'Breakpoint ' .. nr .. ' cleared from line ' .. lnum .. '.'
     else
       Echoerr('Internal error trying to remove breakpoint at line ' .. lnum .. '!')
@@ -1525,7 +1521,7 @@ def HandleEvaluate(msg: string)
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
   if evalFromBalloonExpr
-    if evalFromBalloonExprResult == ''
+    if evalFromBalloonExprResult is null_string
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
     else
       evalFromBalloonExprResult ..= ' = ' .. value
@@ -1558,7 +1554,7 @@ def TermDebugBalloonExpr(): string
     return ''
   endif
   evalFromBalloonExpr = true
-  evalFromBalloonExprResult = ''
+  evalFromBalloonExprResult = null_string
   ignoreEvalError = true
   var expr = CleanupExpr(v:beval_text)
   SendEval(expr)
@@ -1758,7 +1754,7 @@ def HandleCursor(msg: string)
     running = true
   endif
 
-  # UBA: fix
+  # UBA: use ternary operator?
   var fname = ''
   if msg =~ 'fullname='
     fname = GetFullname(msg)
@@ -1816,7 +1812,7 @@ def HandleCursor(msg: string)
           au! SwapExists
         augroup END
       endif
-      # UBA fix
+      # UBA fix use cursor() instead.
       exe ":" .. lnum
       normal! zv
       sign_unplace('TermDebug', {'id': pc_id})
@@ -1841,7 +1837,7 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
   var nr = printf('%d.%d', id, subid)
   if index(BreakpointSigns, nr) == -1
     add(BreakpointSigns, nr)
-    #UBA: fix
+    #UBA: use ternary operator?
     var hiName = ''
     if enabled == "n"
       hiName = "debugBreakpointDisabled"
@@ -1849,7 +1845,6 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
       hiName = "debugBreakpoint"
     endif
 
-    # UBA: Fix
     var label = ''
     if exists('g:termdebug_config') && has_key(g:termdebug_config, 'sign')
       label = g:termdebug_config['sign']
@@ -1927,7 +1922,6 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
     endif
     breakpoint_locations[bploc] += [id]
 
-    # UBA
     var posMsg = ''
     if bufloaded(fname)
       PlaceSign(id, subid, entry)
@@ -1936,7 +1930,6 @@ def HandleNewBreakpoint(msg: string, modifiedFlag: any)
       posMsg = ' in ' .. fname .. ' at line ' .. lnum .. '.'
     endif
 
-    # UBA
     var actionTaken = ''
     if !modifiedFlag
       actionTaken = 'created'
@@ -1983,7 +1976,7 @@ enddef
 # Handle the debugged program starting to run.
 # Will store the process ID in pid
 def HandleProgramRun(msg: string)
-  # UBA: ??? Why + 0?
+  # UBA: ??? Why + 0? Sort of aSCII conversion?
   # var nr = substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', '') + 0
   var nr = str2nr(substitute(msg, '.*pid="\([0-9]*\)\".*', '\1', ''))
   if nr == 0
@@ -2019,7 +2012,6 @@ enddef
 
 InitHighlight()
 InitAutocmd()
-# Perhaps the init goes here UBA
 
 #
 #
