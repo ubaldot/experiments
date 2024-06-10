@@ -326,5 +326,4 @@ def g:Test_termdebug_sanity_check()
   endfor
   #
   unlet g:termdebug_config
-  execute(":%bw!")
 enddef
