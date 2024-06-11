@@ -233,10 +233,25 @@ enddef
 
 def g:Test_termdebug_mapping()
   execute(":%bw!")
-  var default_key_mapping =
-        \ ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
 
-  for key in default_key_mapping
+  var default_key_mappings = {
+      'R': '<cmd>Run<cr>',
+      'C': '<cmd>Continue<cr>',
+      'B': '<cmd>Break<cr>',
+      'D': '<cmd>Clear<cr>',
+      'S': '<cmd>Stop<cr>',
+      'O': '<cmd>Next<cr>',
+      'F': '<cmd>Finish<cr>',
+      'I': '<cmd>Step<cr>',
+      'U': '<cmd>Until<cr>',
+      'K': '<cmd>Evaluate',
+      'T': '<cmd>Tbreak<cr>',
+      '+': '<Cmd>{v:count1}Up<CR>',
+      '-': '<Cmd>{v:count1}Down<CR>',
+      'X': "<ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>"
+  }
+
+  for key in keys(default_key_mappings)
     assert_true(maparg(key, 'n', 0, 1)->empty())
   endfor
 
@@ -245,11 +260,11 @@ def g:Test_termdebug_mapping()
   Termdebug
   WaitForAssert(() => assert_equal(3, winnr('$')))
   wincmd b
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     assert_false(maparg(key, 'n', 0, 1)->empty())
     assert_false(maparg(key, 'n', 0, 1).buffer)
   endfor
-  assert_equal('<cmd>Evaluate', maparg('K', 'n', 0, 1).rhs)
+  assert_equal("$'<cmd>Evaluate'", maparg('K', 'n', 0, 1).rhs)
   wincmd t
   quit!
   redraw!
@@ -259,38 +274,38 @@ def g:Test_termdebug_mapping()
   assert_true(maparg('+', 'n', 0, 1)->empty())
   execute(":%bw!")
 
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     exe $'nnoremap {key} :echom "{key}"<cr>'
   endfor
 
   Termdebug
   WaitForAssert(() => assert_equal(3, winnr('$')))
   wincmd b
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     assert_false(maparg(key, 'n', 0, 1)->empty())
     assert_false(maparg(key, 'n', 0, 1).buffer)
   endfor
-  assert_equal('<cmd>Evaluate', maparg('K', 'n', 0, 1).rhs)
+  assert_equal("$'<cmd>Evaluate'", maparg('K', 'n', 0, 1).rhs)
   wincmd t
   quit!
   redraw!
   WaitForAssert(() => assert_equal(1, winnr('$')))
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     assert_false(maparg(key, 'n', 0, 1)->empty())
     assert_false(maparg(key, 'n', 0, 1).buffer)
   endfor
-  assert_equal(':echom "K"<CR>', maparg('K', 'n', 0, 1).rhs)
+  assert_equal(':echom "K"<cr>', maparg('K', 'n', 0, 1).rhs)
   execute(":%bw!")
 
   # Termdebug overwrites everything if use_default_mapping is true
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     exe $'nnoremap <buffer> {key} :echom "b{key}"<cr>'
   endfor
 
   Termdebug
   WaitForAssert(() => assert_equal(3, winnr('$')))
   wincmd b
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     assert_true(maparg(key, 'n', 0, 1).buffer)
   endfor
   assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
@@ -298,7 +313,7 @@ def g:Test_termdebug_mapping()
   quit!
   redraw!
   WaitForAssert(() => assert_equal(1, winnr('$')))
-  for key in default_key_mapping
+  for key in keys(default_key_mappings)
     assert_true(maparg(key, 'n', 0, 1).buffer)
   endfor
   assert_equal(':echom "bK"<cr>', maparg('K', 'n', 0, 1).rhs)
@@ -308,6 +323,7 @@ def g:Test_termdebug_mapping()
 enddef
 #
 def g:Test_termdebug_sanity_check()
+  # Add tests for old mapping map_K, map_plus, etc.
   # Test if user has filename/folders with wrong names
   g:termdebug_config = {}
   var filename = null_string

@@ -45,11 +45,15 @@ if !has('vim9script') ||  v:version < 900
     finish
 endif
 
-if exists('g:termdebug_loaded')
-    finish
-endif
-g:termdebug_loaded = true
+def Echoerr(msg: string)
+  echohl ErrorMsg | echom '[termdebug] ' .. msg | echohl None
+enddef
 
+# if exists('g:termdebug_loaded')
+#     Echoerr('Termdebug already loaded.')
+#     finish
+# endif
+# g:termdebug_loaded = true
 
 # The command that starts debugging, e.g. ":Termdebug vim".
 # To end type "quit" in the gdb window.
@@ -123,7 +127,7 @@ var vvertical: bool
 var winbar_winids: list<number>
 
 var existing_mappings: dict<any>
-var default_key_mappings: list<string>
+var default_key_mappings: dict<string>
 
 var saved_mousemodel: string
 
@@ -186,9 +190,9 @@ def InitScriptVars()
   BreakpointSigns = []
 
   evalFromBalloonExpr = false
-  evalFromBalloonExprResult = null_string
+  evalFromBalloonExprResult = ''
   ignoreEvalError = false
-  evalexpr = null_string
+  evalexpr = ''
   # Remember the old value of 'signcolumn' for each buffer that it's set in, so
   # that we can restore the value for all buffers.
   signcolumn_buflist = [bufnr()]
@@ -201,8 +205,22 @@ def InitScriptVars()
   winbar_winids = []
 
   existing_mappings = {}
-  default_key_mappings = ['R', 'C', 'B', 'D', 'S', 'O', 'F', 'X', 'I', 'U', 'K', 'T', '+', '-',]
-
+  default_key_mappings = {
+      'R': '<cmd>Run<cr>',
+      'C': '<cmd>Continue<cr>',
+      'B': '<cmd>Break<cr>',
+      'D': '<cmd>Clear<cr>',
+      'S': '<cmd>Stop<cr>',
+      'O': '<cmd>Next<cr>',
+      'F': '<cmd>Finish<cr>',
+      'I': '<cmd>Step<cr>',
+      'U': '<cmd>Until<cr>',
+      'K': '<cmd>Evaluate',
+      'T': '<cmd>Tbreak<cr>',
+      '+': '<Cmd>{v:count1}Up<CR>',
+      '-': '<Cmd>{v:count1}Down<CR>',
+      'X': "<ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>"
+  }
   if has('menu')
     saved_mousemodel = &mousemodel
   else
@@ -229,6 +247,17 @@ def SanityCheck(): bool
     err  = 'Terminal debugger already running, cannot run two'
   elseif !executable(gdb_cmd)
     err = 'Cannot execute debugger program "' .. gdb_cmd .. '"'
+  endif
+
+  # UBA Config checks (Add few tests)
+  if exists('g:termdebug_config')
+    if has_key(g:termdebug_config, 'map_K') || has_key(g:termdebug_config, 'map_plus') || has_key(g:termdebug_config, 'map_minus')
+       err = "The method of creating mappings has changed. See :h termdebug for instructions on how to update your mappings."
+    endif
+  endif
+
+  if exists('g:termdebug_map_K')
+    err = "The method of creating mappings has changed. See :h termdebug for instructions on how to update your mappings."
   endif
 
   if !empty(err)
@@ -283,10 +312,6 @@ def GetCommand(): list<string>
 
   # Sweet!
   return type(cmd) == v:t_list ? copy(cmd) : [cmd]
-enddef
-
-def Echoerr(msg: string)
-  echohl ErrorMsg | echom '[termdebug] ' .. msg | echohl None
 enddef
 
 def StartDebug(bang: bool, ...gdb_args: list<string>)
@@ -364,7 +389,6 @@ def CloseBuffers()
   var bufnames = ['debugged program', 'gdb communication', asmbufname, varbufname]
   for bufname in bufnames
     if bufnr(bufname) > 0 && bufexists(bufnr(bufname))
-      echom bufname
       exe 'bwipe! ' .. bufname
     endif
   endfor
@@ -789,9 +813,9 @@ def GdbOutCallback(channel: channel, text: string)
   var decoded_text = ''
   if text =~ '^\^error,msg='
     decoded_text = DecodeMessage(text[11 : ], false)
-    if evalexpr isnot null_string && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
+    if !empty(evalexpr) && decoded_text =~ 'A syntax error in expression, near\|No symbol .* in current context'
       # Silently drop evaluation errors.
-      evalexpr = null_string
+      evalexpr = ''
       return
     endif
   elseif text[0] == '~'
@@ -1170,32 +1194,23 @@ def InstallCommands()
   command Var  GotoVariableswinOrCreateIt()
   command Winbar  InstallWinbar(1)
 
+
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'use_default_mappings') && g:termdebug_config['use_default_mappings'] == true
-    # Save possibly existing mappings
-    for key in default_key_mappings
-        if !empty(mapcheck(key, "n"))
-            existing_mappings[key] = maparg(key, 'n')
-        endif
-    endfor
+  # Save possibly existing mappings
+  for key in keys(default_key_mappings)
+      if !empty(mapcheck(key, "n"))
+          existing_mappings[key] = maparg(key, 'n', 0, 1)
+          echom "saved mappings:" .. string(existing_mappings)
+      endif
+  endfor
 
-    # UBA may be another kind of map?
-    nnoremap <silent> B <cmd>Break<cr>
-    nnoremap <silent> T <cmd>Tbreak<cr>
-    nnoremap <silent> D <cmd>Clear<cr>
-    nnoremap <silent> C <cmd>Continue<cr>
-    nnoremap <silent> I <cmd>Step<cr>
-    nnoremap <silent> O <cmd>Next<cr>
-    nnoremap <silent> F <cmd>Finish<cr>
-    nnoremap <silent> S <cmd>Stop<cr>
-    nnoremap <silent> U <cmd>Until<cr>
-    nnoremap <silent> K <cmd>Evaluate
-    nnoremap <silent> R <cmd>Run<cr>
-    nnoremap <silent> X <ScriptCmd>TermDebugSendCommand('set confirm off')<cr><ScriptCmd>TermDebugSendCommand('exit')<cr>
-
-    nnoremap <expr> + $'<Cmd>{v:count1}Up<CR>'
-    nnoremap <expr> - $'<Cmd>{v:count1}Down<CR>'
+  # Overwrite eventual existing global mappings
+  for key in keys(default_key_mappings)
+    if has_key(existing_mappings, key) && !existing_mappings[key].buffer || empty(mapcheck(key, "n"))
+      exe 'nnoremap <expr> ' .. key .. " " .. $"$'{default_key_mappings[key]}'"
+    endif
+  endfor
   endif
-
 
   if has('menu') && &mouse != ''
     InstallWinbar(0)
@@ -1265,11 +1280,12 @@ def DeleteCommands()
 
   # Restore mappings
   if exists('g:termdebug_config') && has_key(g:termdebug_config, 'use_default_mappings') && g:termdebug_config['use_default_mappings'] == true
-    for key in default_key_mappings
+    for key in keys(default_key_mappings)
+      if index(keys(existing_mappings), key) != -1
+        mapset('n', 0, existing_mappings[key])
+      else
         exe "nunmap " .. key
-        if has_key(existing_mappings, key)
-            exe "nnoremap " .. key .. " " .. existing_mappings[key]
-        endif
+      endif
     endfor
   endif
 
@@ -1522,7 +1538,7 @@ def HandleEvaluate(msg: string)
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
         \ ->substitute(NullRepl, '\\000', 'g')
   if evalFromBalloonExpr
-    if evalFromBalloonExprResult is null_string
+    if empty(evalFromBalloonExprResult)
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
     else
       evalFromBalloonExprResult ..= ' = ' .. value
@@ -1555,7 +1571,7 @@ def TermDebugBalloonExpr(): string
     return ''
   endif
   evalFromBalloonExpr = true
-  evalFromBalloonExprResult = null_string
+  evalFromBalloonExprResult = ''
   ignoreEvalError = true
   var expr = CleanupExpr(v:beval_text)
   SendEval(expr)
