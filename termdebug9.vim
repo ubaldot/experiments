@@ -223,8 +223,6 @@ def InitScriptVars()
   }
   if has('menu')
     saved_mousemodel = &mousemodel
-  else
-    saved_mousemodel = null_string
   endif
 enddef
 
@@ -1200,7 +1198,6 @@ def InstallCommands()
   for key in keys(default_key_mappings)
       if !empty(mapcheck(key, "n"))
           existing_mappings[key] = maparg(key, 'n', 0, 1)
-          echom "saved mappings:" .. string(existing_mappings)
       endif
   endfor
 
@@ -1305,19 +1302,17 @@ def DeleteCommands()
     win_gotoid(curwinid)
     winbar_winids = []
 
-    if saved_mousemodel isnot null_string
-      &mousemodel = saved_mousemodel
-      saved_mousemodel = null_string
-      try
-        aunmenu PopUp.-SEP3-
-        aunmenu PopUp.Set\ breakpoint
-        aunmenu PopUp.Clear\ breakpoint
-        aunmenu PopUp.Run\ until
-        aunmenu PopUp.Evaluate
-      catch
-        # ignore any errors in removing the PopUp menu
-      endtry
-    endif
+    &mousemodel = saved_mousemodel
+    try
+      aunmenu PopUp.-SEP3-
+      aunmenu PopUp.Set\ breakpoint
+      aunmenu PopUp.Clear\ breakpoint
+      aunmenu PopUp.Run\ until
+      aunmenu PopUp.Evaluate
+    catch
+      # ignore any errors in removing the PopUp menu
+    endtry
+    # endif
   endif
 
   sign_unplace('TermDebug')
