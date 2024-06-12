@@ -52,7 +52,7 @@ def Cleanup_files(bin_name: string)
    delete(bin_name .. '.c')
 enddef
 
-import '../termdebug9.vim'
+import "~/vim_official/vim/runtime/pack/dist/opt/termdebug/plugin/termdebug.vim"
 
 def g:Test_termdebug_basic()
   var bin_name = 'XTD_basic'
@@ -125,12 +125,12 @@ def g:Test_termdebug_basic()
     # assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     # UBA: OBS: For some reason at Termdebug startup winid 1002 got lost. The same
     # for the other windows.
-    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
     execute(':bw!')
     execute("Asm")
     assert_equal(winnr(), winnr('$'))
-    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['leaf', 1000], ['leaf', 1004 + count]]], winlayout())
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['leaf', 1000], ['leaf', 1003 + count]]], winlayout())
     count += 1
     execute(':bw!')
   endif
@@ -142,7 +142,7 @@ def g:Test_termdebug_basic()
   if winwidth(0) < winw
     assert_equal(winnr(), winnr('$') - 1)
     redraw!
-    assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
+    assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
     count += 1
     execute(':bw!')
   endif
@@ -150,7 +150,7 @@ def g:Test_termdebug_basic()
   execute("Asm")
   if winwidth(0) < winw
      assert_equal(winnr(), winnr('$') - 1)
-     assert_equal(['col', [['leaf', 1003], ['leaf', 1001], ['row', [['leaf', 1004 + count], ['leaf', 1000]]]]], winlayout())
+     assert_equal(['col', [['leaf', 1002], ['leaf', 1001], ['row', [['leaf', 1003 + count], ['leaf', 1000]]]]], winlayout())
     count += 1
     execute(':bw!')
   endif
@@ -232,7 +232,6 @@ def g:Test_termdebug_tbreak()
 enddef
 
 def g:Test_termdebug_mapping()
-  execute(":%bw!")
 
   var default_key_mappings = {
       'R': '<cmd>Run<cr>',
@@ -323,6 +322,7 @@ def g:Test_termdebug_mapping()
 enddef
 #
 def g:Test_termdebug_sanity_check()
+  execute(":%bw!")
   # Add tests for old mapping map_K, map_plus, etc.
   # Test if user has filename/folders with wrong names
   g:termdebug_config = {}
@@ -346,4 +346,26 @@ def g:Test_termdebug_sanity_check()
   endfor
   #
   unlet g:termdebug_config
+enddef
+
+def g:Test_termdebug_save_restore_variables()
+  execute(":%bw!")
+  &mousemodel=''
+  Termdebug
+  call WaitForAssert(() => assert_equal(3, winnr('$')))
+  wincmd t
+  quit!
+  call WaitForAssert(() => assert_true(empty(&mousemodel)))
+enddef
+
+def g:Test_termdebug_double_termdebug_instances()
+  execute(":%bw!")
+  var error_message = 'Terminal debugger already running, cannot run two'
+  Termdebug
+  call WaitForAssert(() => assert_equal(3, winnr('$')))
+  Termdebug
+  call WaitForAssert(() =>  assert_true(execute('messages') =~ error_message))
+  wincmd t
+  quit!
+  call WaitForAssert(() => assert_equal(1, winnr('$')))
 enddef

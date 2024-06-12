@@ -409,9 +409,8 @@ enddef
 # Open a terminal window without a job, to run the debugged program in.
 def StartDebug_term(dict: dict<any>)
   ptybufnr = term_start('NONE', {
-        \ 'term_name': 'debugged program',
-        \ 'vertical': vvertical,
-        \ })
+        term_name: 'debugged program',
+        vertical: vvertical})
   if ptybufnr == 0
     Echoerr('Failed to open the program terminal window')
     return
@@ -592,7 +591,6 @@ enddef
 def StartDebug_prompt(dict: dict<any>)
   var gdb_cmd = GetCommand()
   gdbbufname = gdb_cmd[0]
-
 
   if vvertical == true
     vertical new
@@ -848,24 +846,24 @@ def DecodeMessage(quotedText: string, literal: bool): string
     return ''
   endif
   var msg = quotedText
-        \ ->substitute('^"\|[^\\]\zs".*', '', 'g')
-        \ ->substitute('\\"', '"', 'g')
+        ->substitute('^"\|[^\\]\zs".*', '', 'g')
+        ->substitute('\\"', '"', 'g')
         #\ multi-byte characters arrive in octal form
         #\ NULL-values must be kept encoded as those break the string otherwise
-        \ ->substitute('\\000', NullRepl, 'g')
-        \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
+        ->substitute('\\000', NullRepl, 'g')
+        ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
         # You could also  use ->substitute('\\\\\(\o\o\o\)', '\=nr2char(str2nr(submatch(1), 8))', "g")
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
         #\ \ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
         #\ \ ->substitute('\\0x00', NullRepl, 'g')
-        \ ->substitute('\\\\', '\', 'g')
-        \ ->substitute(NullRepl, '\\000', 'g')
+        ->substitute('\\\\', '\', 'g')
+        ->substitute(NullRepl, '\\000', 'g')
   if literal == false
     return msg
-          \ ->substitute('\\t', "\t", 'g')
-          \ ->substitute('\\n', '', 'g')
+          ->substitute('\\t', "\t", 'g')
+          ->substitute('\\n', '', 'g')
   else
     return msg
   endif
@@ -971,8 +969,8 @@ def EndPromptDebug(job: any, status: any)
     doauto <nomodeline> User TermdebugStopPre
   endif
 
-  if bufexists(promptbuf)
-    exe 'bwipe! ' .. promptbuf
+  if bufexists(promptbufnr)
+    exe 'bwipe! ' .. promptbufnr
   endif
 
   EndDebugCommon()
@@ -1031,11 +1029,11 @@ def HandleDisasmMsg(msg: string)
     endif
   elseif msg !~ '^&"disassemble'
     var value = substitute(msg, '^\~\"[ ]*', '', '')
-     \ ->substitute('^=>[ ]*', '', '')
-     \ ->substitute('\\n\"\r$', '', '')
-     \ ->substitute('\\n\"$', '', '')
-     \ ->substitute('\r', '', '')
-     \ ->substitute('\\t', ' ', 'g')
+     ->substitute('^=>[ ]*', '', '')
+     ->substitute('\\n\"\r$', '', '')
+     ->substitute('\\n\"$', '', '')
+     ->substitute('\r', '', '')
+     ->substitute('\\t', ' ', 'g')
 
     if value != '' || !empty(asm_lines)
       add(asm_lines, value)
@@ -1066,11 +1064,7 @@ def HandleVariablesMsg(msg: string)
   if win_gotoid(varwin)
     silent! :%delete _
     var spaceBuffer = 20
-    setline(1, 'Type' ..
-          \ repeat(' ', 16) ..
-          \ 'Name' ..
-          \ repeat(' ', 16) ..
-          \ 'Value')
+    setline(1, 'Type' .. repeat(' ', 16) ..  'Name' ..  repeat(' ', 16) ..  'Value')
     var cnt = 1
     var capture = '{name=".\{-}",\%(arg=".\{-}",\)\{0,1\}type=".\{-}"\%(,value=".\{-}"\)\{0,1\}}'
     var varinfo = matchstr(msg, capture, 0, cnt)
@@ -1078,10 +1072,10 @@ def HandleVariablesMsg(msg: string)
     while varinfo != ''
       var vardict = ParseVarinfo(varinfo)
       setline(cnt + 1, vardict['type'] ..
-            \ repeat(' ', max([20 - len(vardict['type']), 1])) ..
-            \ vardict['name'] ..
-            \ repeat(' ', max([20 - len(vardict['name']), 1])) ..
-            \ vardict['value'])
+            repeat(' ', max([20 - len(vardict['type']), 1])) ..
+            vardict['name'] ..
+            repeat(' ', max([20 - len(vardict['name']), 1])) ..
+            vardict['value'])
       cnt += 1
       varinfo = matchstr(msg, capture, 0, cnt)
     endwhile
@@ -1356,15 +1350,13 @@ def SetBreakpoint(at: string, tbreak=false)
 
   # Use the fname:lnum format, older gdb can't handle --source.
   var AT = empty(at) ?
-        \ fnameescape(expand('%:p')) .. ':' .. line('.') : at
+        fnameescape(expand('%:p')) .. ':' .. line('.') : at
   var cmd = ''
   if tbreak
     cmd = '-break-insert -t ' .. AT
   else
     cmd = '-break-insert ' .. AT
   endif
-  # OK
-  # echom "cmsd: " .. cmd
   SendCommand(cmd)
   if do_continue
     Continue
@@ -1384,7 +1376,7 @@ def ClearBreakpoint()
         SendCommand('-break-delete ' .. id)
         for subid in keys(breakpoints[id])
           sign_unplace('TermDebug',
-                \ {'id': Breakpoint2SignNumber(id, str2nr(subid))})
+                {id: Breakpoint2SignNumber(id, str2nr(subid))})
         endfor
         remove(breakpoints, id)
         remove(breakpoint_locations[bploc], idx)
@@ -1455,8 +1447,8 @@ def SendEval(expr: string)
 
   # encoding expression to prevent bad errors
   var expr_escaped = expr
-        \ ->substitute('\\', '\\\\', 'g')
-        \ ->substitute('"', '\\"', 'g')
+        ->substitute('\\', '\\\\', 'g')
+        ->substitute('"', '\\"', 'g')
   SendCommand('-data-evaluate-expression "' .. expr_escaped .. '"')
   evalexpr = exprLHS
 enddef
@@ -1520,18 +1512,18 @@ enddef
 
 def HandleEvaluate(msg: string)
   var value = msg
-        \ ->substitute('.*value="\(.*\)"', '\1', '')
-        \ ->substitute('\\"', '"', 'g')
-        \ ->substitute('\\\\', '\\', 'g')
+        ->substitute('.*value="\(.*\)"', '\1', '')
+        ->substitute('\\"', '"', 'g')
+        ->substitute('\\\\', '\\', 'g')
         #\ multi-byte characters arrive in octal form, replace everything but NULL values
-        \ ->substitute('\\000', NullRepl, 'g')
-        \ ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
+        ->substitute('\\000', NullRepl, 'g')
+        ->substitute('\\\(\o\o\o\)', (m) => nr2char(str2nr(m[1], 8)), 'g')
         #\ Note: GDB docs also mention hex encodings - the translations below work
         #\       but we keep them out for performance-reasons until we actually see
         #\       those in mi-returns
         #\ ->substitute('\\0x00', NullRep, 'g')
         #\ ->substitute('\\0x\(\x\x\)', {-> eval('"\x' .. submatch(1) .. '"')}, 'g')
-        \ ->substitute(NullRepl, '\\000', 'g')
+        ->substitute(NullRepl, '\\000', 'g')
   if evalFromBalloonExpr
     if empty(evalFromBalloonExprResult)
       evalFromBalloonExprResult = evalexpr .. ': ' .. value
@@ -1555,7 +1547,7 @@ enddef
 
 # Show a balloon with information of the variable under the mouse pointer,
 # if there is any.
-# UBA: Does this function always return '' ?
+# CHECKME: Does this function always return '' ?
 def TermDebugBalloonExpr(): string
   if v:beval_winid != sourcewin
     return ''
@@ -1715,7 +1707,6 @@ def GotoVariableswinOrCreateIt()
     setlocal statusline=%#StatusLine#\ %t(%n)%m%*
     setlocal nobuflisted
 
-
     # If exists, then open, otherwise create
     if varbufnr > 0 && bufexists(varbufnr)
       exe ':buffer ' .. varbufnr
@@ -1737,10 +1728,6 @@ enddef
 # Handle stopping and running message from gdb.
 # Will update the sign that shows the current position.
 def HandleCursor(msg: string)
-  if exists('#User#TermdebugCursor')
-    doauto <nomodeline> User TermdebugCursor
-  endif
-
   var wid = win_getid()
 
   if msg =~ '^\*stopped'
@@ -1818,7 +1805,7 @@ def HandleCursor(msg: string)
       normal! zv
       sign_unplace('TermDebug', {'id': pc_id})
       sign_place(pc_id, 'TermDebug', 'debugPC', fname,
-            \ {'lnum': str2nr(lnum), priority: 110})
+            {lnum: str2nr(lnum), priority: 110})
       if !exists('b:save_signcolumn')
         b:save_signcolumn = &signcolumn
         add(signcolumn_buflist, bufnr())
@@ -1856,8 +1843,8 @@ def CreateBreakpoint(id: number, subid: number, enabled: string)
       endif
     endif
     sign_define('debugBreakpoint' .. nr,
-          \ {'text': slice(label, 0, 2),
-          \ 'texthl': hiName})
+          {text: slice(label, 0, 2),
+           texthl: hiName})
   endif
 enddef
 
@@ -1947,8 +1934,8 @@ enddef
 def PlaceSign(id: number, subid: number, entry: dict<any>)
   var nr = printf('%d.%d', id, subid)
   sign_place(Breakpoint2SignNumber(id, subid), 'TermDebug',
-        \ 'debugBreakpoint' .. nr, entry['fname'],
-        \ {'lnum': entry['lnum'], priority: 110})
+        'debugBreakpoint' .. nr, entry['fname'],
+        {lnum: entry['lnum'], priority: 110})
   entry['placed'] = 1
 enddef
 
@@ -1965,7 +1952,7 @@ def HandleBreakpointDelete(msg: string)
     for [subid, entry] in items(breakpoints[id])
       if has_key(entry, 'placed')
         sign_unplace('TermDebug',
-              \ {'id': Breakpoint2SignNumber(str2nr(id), str2nr(subid))})
+              {'id': Breakpoint2SignNumber(str2nr(id), str2nr(subid))})
         remove(entry, 'placed')
       endif
     endfor
@@ -2014,6 +2001,4 @@ enddef
 InitHighlight()
 InitAutocmd()
 
-#
-#
 # vim: sw=2 sts=2 et

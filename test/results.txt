@@ -1,4 +1,14 @@
 Test_termdebug_basic(): pass
-Test_termdebug_mapping(): pass
-Test_termdebug_sanity_check(): pass
-Test_termdebug_tbreak(): pass
+Test_termdebug_double_termdebug_instances(): pass
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_mapping line 30: Expected False but got 1
+Error: Test Test_termdebug_mapping() failed with exception Vim(eval):E716: Key not present in Dictionary: "buffer" at command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_mapping, line 31
+Test_termdebug_mapping(): FAIL
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_sanity_check[17]..<SNR>3_WaitForAssert[2]..<SNR>3_WaitForCommon[10]..<lambda>22 line 1: Expected True but got false
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_sanity_check[17]..<SNR>3_WaitForAssert[2]..<SNR>3_WaitForCommon[10]..<lambda>22 line 1: Expected True but got false
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_sanity_check[18]..<SNR>3_WaitForAssert[2]..<SNR>3_WaitForCommon[10]..<lambda>23 line 1: Expected 1 but got 4
+Test_termdebug_sanity_check(): FAIL
+Error: Test Test_termdebug_save_restore_variables() failed with exception Vim(eval):E1004: White space required before and after '=' at "=''" at command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_save_restore_variables, line 2
+Test_termdebug_save_restore_variables(): FAIL
+command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_tbreak[10]..<SNR>3_WaitForAssert[2]..<SNR>3_WaitForCommon[10]..<lambda>24 line 1: Expected 3 but got 1
+Error: Test Test_termdebug_tbreak() failed with exception Vim:E492: Not an editor command: :Tbreak 10 at command line..script /home/yt75534/.vim/experiments/test/runner.vim[49]..function <SNR>1_RunTests[20]..Test_termdebug_tbreak, line 16
+Test_termdebug_tbreak(): FAIL
